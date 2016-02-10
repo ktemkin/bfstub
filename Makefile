@@ -1,11 +1,20 @@
+
+# Use our cross-compile prefix to set up our basic cross compile environment.
 CC = $(CROSS_COMPILE)gcc
 LD = $(CROSS_COMPILE)ld
 OBJCOPY = $(CROSS_COMPILE)objcopy
+
+# Pull in information about our "hosted" libfdt.
+include lib/fdt/Makefile.libfdt
+
+VPATH = .:lib:lib/fdt
 
 TARGET = discharge
 TEXT_BASE = 0x80110000
 
 CFLAGS = \
+  -Iinclude \
+	-Ilib/fdt \
 	-march=armv8-a \
 	-mlittle-endian \
 	-fno-stack-protector \
@@ -33,7 +42,7 @@ $(TARGET).fit: $(TARGET).bin $(TARGET).its
 $(TARGET).bin: $(TARGET).elf
 	$(OBJCOPY) -v -O binary $< $@
 
-$(TARGET).elf: start.o main.o
+$(TARGET).elf: start.o main.o microlib.o printf.o memmove.o $(LIBFDT_OBJS)
 	$(LD) -T boot.lds -Ttext=$(TEXT_BASE) $(LDFLAGS) $^ -o $@
 
 clean:

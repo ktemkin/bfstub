@@ -1,52 +1,70 @@
-/*
- * Copyright (C) 2016 Assured Information Security 
- *  Author: Kyle J. Temkin <temkink@ainfosec.com>
- * Copyright (C) 2014 Andrei Warkentin <andrey.warkentin@gmail.com>
+/**
+ * Discharge Boot Adapter: a utility to boot Xen from Depthcharge on AArch64
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
+ * Copyright (C) Assured Information Security, Inc.
+ *      Author: Kyle J. Temkin <temkink@ainfosec.com>
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ *  Permission is hereby granted, free of charge, to any person obtaining a 
+ *  copy of this software and associated documentation files (the "Software"), 
+ *  to deal in the Software without restriction, including without limitation 
+ *  the rights to use, copy, modify, merge, publish, distribute, sublicense, 
+ *  and/or sell copies of the Software, and to permit persons to whom the 
+ *  Software is furnished to do so, subject to the following conditions:
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ *  The above copyright notice and this permission notice shall be included in 
+ *  all copies or substantial portions of the Software.
+ *
+ *  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS 
+ *  OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
+ *  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE 
+ *  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER 
+ *  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING 
+ *  FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER 
+ *  DEALINGS IN THE SOFTWARE.
  */
 
 #define SERIAL_BASE 0x70006000
 
+.section ".text"
+
 .globl _header
+.globl image_start
 /*
  * x0 contains the FDT blob PA, which we don't use
  */
 _header:
         b       _start          // branch to kernel start, magic
-        .long   0                 // reserved
-        .quad   0x0               // Image load offset from start of RAM, unused
-        .quad   0                 // reserved
-        .quad   0                 // reserved
-        .quad   0                 // reserved
-        .quad   0                 // reserved
-        .quad   0                 // reserved
-        .byte   0x41              // Magic number, "ARM\x64"
+        .long   0               // reserved
+        .quad   0               // Image load offset from start of RAM
+        .quad   0               // reserved
+        .quad   0               // reserved
+        .quad   0               // reserved
+        .quad   0               // reserved
+        .quad   0               // reserved
+        .byte   0x41            // Magic number, "ARM\x64"
         .byte   0x52
         .byte   0x4d
         .byte   0x64
         .word   0                 // reserved
 _start:
-
-        // TODO: Store away our pointers (fdt, ramdisk?) in a c-accesible
-        // location.
+        // Reminder: do not clobber x0, as it contains the location of our
+        // Flattened Device Tree / FDT. If you need to use x0, stash the value
+        // (e.g. on the stack), and then put it back before main.
 
         // Create a simple stack for our C program, and jump to it.
-        ldr     x0, =stack_end
-        mov     sp, x0
+        ldr     x1, =stack_end
+        mov     sp, x1
+
+        // Load the current execution level into x1; we'll need this to
+        // determine whether we can continue into Xen.
+        mrs     x1, CurrentEL
+        lsr     x1, x1, #2
+
+        // Clear out the system's bss. Depthcharge doesn't do this for us,
+        // as it assumes we're a kernel capable of self-bootstrapping.
+        stp     x0, x1, [sp, #-16]!
+        bl      _clear_bss
+        ldp     x0, x1, [sp], #16
 
         // Run the main discharge routine. This shouldn't return.
         b       main
@@ -64,13 +82,6 @@ _start:
 _putc:
         ldr     x1, =SERIAL_BASE
         strb    w0, [x1]
-1:      ldrb    w0, [x1, #20]     // LSR
-        tbz     w0, #5, 1b        // THRE == 0
+1:      ldrb    w0, [x1, #20]
+        tbz     w0, #5, 1b
         ret
-
-.section .data
-.align 16
-stack:
-        .fill 16384, 8, 0
-stack_end:
-

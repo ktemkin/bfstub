@@ -22,10 +22,12 @@ OUTPUT_ARCH(aarch64)
 ENTRY(_header)
 SECTIONS
 {
+  /* start the the beginning our relocated block, where DepthCharge will place us */
 	. = 0x00000000;
 
 	. = ALIGN(4);
 	.text : {
+    PROVIDE(image_start = .);
 		start.o	(.text)
 		*(.text)
 	}
@@ -47,6 +49,10 @@ SECTIONS
 		*(.bss) . = ALIGN(8);
 	}
 	lds_bss_end = .;
+
+  . = ALIGN(16);
+  . += 0x10000; /* 64 KiB stack */
+  stack_end = .;
 
 	/DISCARD/ : { *(.dynstr*) }
 	/DISCARD/ : { *(.dynamic*) }
