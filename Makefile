@@ -7,10 +7,11 @@ OBJCOPY = $(CROSS_COMPILE)objcopy
 # Pull in information about our "hosted" libfdt.
 include lib/fdt/Makefile.libfdt
 
+# Allow user of our libraries.
 VPATH = .:lib:lib/fdt
 
+# Build the discharge binary.
 TARGET = discharge
-TEXT_BASE = 0x80110000
 
 CFLAGS = \
   -Iinclude \
@@ -42,8 +43,8 @@ $(TARGET).fit: $(TARGET).bin $(TARGET).its
 $(TARGET).bin: $(TARGET).elf
 	$(OBJCOPY) -v -O binary $< $@
 
-$(TARGET).elf: start.o main.o microlib.o printf.o memmove.o $(LIBFDT_OBJS)
-	$(LD) -T boot.lds -Ttext=$(TEXT_BASE) $(LDFLAGS) $^ -o $@
+$(TARGET).elf: start.o main.o microlib.o printf.o memmove.o cache.o $(LIBFDT_OBJS)
+	$(LD) -T boot.lds $(LDFLAGS) $^ -o $@
 
 clean:
 	rm -f *.o $(TARGET) $(TARGET).bin $(TARGET).elf $(TARGET).fit

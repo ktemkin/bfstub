@@ -498,6 +498,7 @@ repeat:
         s = va_arg(args, char *);
         if (!s) s = "<NULL>";
         len = strnlen(s, precision);
+
         if (!(flags & LEFT)) while (len < field_width--) *str++ = ' ';
         for (i = 0; i < len; ++i) *str++ = *s++;
         while (len < field_width--) *str++ = ' ';
@@ -574,7 +575,7 @@ repeat:
 
 int printf(const char *fmt, ...)
 {
-  char buf[15*80], *p;
+  char buf[1024], *p;
 
   va_list args;
   int n=0;

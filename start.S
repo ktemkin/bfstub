@@ -76,12 +76,13 @@ _start:
 /*
  * Print a char in x0.
  *
- * Clobbers x0, x1.
+ * Clobbers x0, x1, x2.
  */
 .global _putc
 _putc:
         ldr     x1, =SERIAL_BASE
+1:      ldrb    w2, [x1, #20]
+        tbz     w2, #5, 1b
         strb    w0, [x1]
-1:      ldrb    w0, [x1, #20]
-        tbz     w0, #5, 1b
         ret
+

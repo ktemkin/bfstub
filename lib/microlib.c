@@ -27,8 +27,9 @@
 
 #include <microlib.h>
 
+
 /**
- * Quick (and not particularly performant) implementation of the standard 
+ * Quick (and not particularly performant) implementation of the standard
  * library's memcpy.
  */
 void * memcpy(void * dest, const void * src, size_t n)
@@ -43,7 +44,6 @@ void * memcpy(void * dest, const void * src, size_t n)
 
     return dest;
 }
-
 
 /**
  * Prints a single character (synchronously) via serial.
@@ -60,7 +60,7 @@ void putc(char c)
     asm volatile(
           "mov x0, %0\n\t"
           "bl  _putc\n\t"
-          :: "r" (c) : "x0", "x1", "x30"
+          :: "r" (c) : "x0", "x1", "x2", "x30"
     );
 }
 
@@ -83,7 +83,7 @@ void puts(char * s)
  */
 size_t strnlen(const char *s, size_t max)
 {
-    size_t n;
+    size_t n = 0;
 
     while(*s) {
         ++n;

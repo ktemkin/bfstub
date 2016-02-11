@@ -32,6 +32,9 @@
 #ifndef __MICROLIB_H__
 #define __MICROLIB_H__
 
+static const int SUCCESS = 0;
+
+
 /**
  * Standard library functions. Exactly what you'd expect.
  */

@@ -23,7 +23,7 @@ ENTRY(_header)
 SECTIONS
 {
   /* start the the beginning our relocated block, where DepthCharge will place us */
-	. = 0x00000000;
+  . = 0x80110000;
 
 	. = ALIGN(4);
 	.text : {

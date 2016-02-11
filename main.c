@@ -24,12 +24,19 @@
  */
 
 
+
 #include <inttypes.h>
 #include <microlib.h>
-#include <libfdt.h>
 
-// Very important code.
-void intro(void)
+#include <libfdt.h>
+#include <cache.h>
+
+/**
+ * Print our intro message. This is surprisignly nice as a
+ * boundary between serial output, as we're the firt real serial
+ * output on (re)boot.
+ */
+void intro(uint32_t el)
 {
     puts("      _ _          _                          \n");
     puts("     | (_)        | |                         \n");
@@ -40,42 +47,99 @@ void intro(void)
     puts("                                    __/ |     \n");
     puts("   depthcharge -> xen adapter      |___/   v0 \n");
 
+    puts("\n\nInitializing discharge...\n");
+    printf("  current execution level:               %u\n", el);
+    printf("  hypervisor applications supported:     %s\n", (el == 2) ? "YES" : "NO");
+
 }
 
-
+/**
+ * Triggered on an unrecoverable condition; prints an error message
+ * and terminates execution.
+ */
 void panic(const char * message)
 {
     printf("\n\n");
     printf("-----------------------------\n");
     printf("PANIC: %s\n", message);
     printf("-----------------------------\n");
-    while(0);
+
+    // TODO: This should probably induce a reboot,
+    // rather than sticking here.
+    while(1);
 }
+
+
+/**
+ * Ensures that a valid FDT is accessible for the system, performing any
+ * steps necessary to make the FDT accessible, and validating the device tree.
+ *
+ * @return SUCCESS, or an FDT error code.
+ */
+int ensure_fdt_is_accessible(void *fdt)
+{
+    int rc;
+
+    // Depthcharge loads the FDT into memory with the cache on, and doesn't
+    // flush the relevant cache lines when it switches the cache off. As a
+    // result, we'll need to flush the cache lines for it before we'll be able
+    // to see the FDT.
+
+    // We start by flushing our first cache line, which we assume is large
+    // enough to provide the first two fields of the FDT: an 8-byte magic number,
+    // and 8-byte size.
+    __invalidate_cache_line(fdt);
+
+    // Validate that we have a valid-appearing device tree.
+    rc = fdt_check_header(fdt);
+    if(rc)
+        return rc;
+
+    // If we do, invalidate the remainder of its cache lines.
+    __invalidate_cache_region(fdt, fdt_totalsize(fdt));
+
+    return SUCCESS;
+}
+
+/**
+ * Main task for loading the system's device tree.
+ */
+void load_device_tree(void *fdt)
+{
+    int rc;
+    char * fdt_raw = fdt;
+
+    puts("Loading device tree...\n");
+    rc = ensure_fdt_is_accessible(fdt);
+
+    printf("  flattened device tree resident at:     0x%p\n", fdt);
+    printf("  flattened device tree magic is:        %02x%02x%02x%02x\n", fdt_raw[0], fdt_raw[1], fdt_raw[2], fdt_raw[3]);
+    printf("  flattened device tree is:              %s (%d)\n", rc == SUCCESS ? "valid" : "INVALID", rc);
+
+    if(rc != SUCCESS)
+        panic("Cannot continue without a valid device tree.");
+
+    printf("  flattened device size:                 %d bytes \n", fdt_totalsize(fdt));
+}
+
+
+/**
+ * Loads the Xen kernel into memory, and returns its address.
+ */
+void * load_xen_kernel(void *fdt)
+{
+
+
+}
+
 
 
 void main(void * fdt, uint32_t el)
 {
-    int validation_error;
-    char * fdt_raw = fdt;
+    intro(el);
 
-    intro();
+    load_device_tree(fdt);
 
-    puts("\n\nInitializing discharge...\n");
-    printf("  current execution level:               %u\n", el);
-    printf("  hypervisor applications supported:     %s\n", (el == 2) ? "YES" : "NO");
-    printf("  flattened device tree resident at:     0x%p\n", fdt);
-    printf("  flattened device tree magic is:        %02x%02x%02x%02x\n", fdt_raw[0], fdt_raw[1], fdt_raw[2], fdt_raw[3]);
-
-    validation_error = fdt_check_header(fdt);
-
-    if(validation_error) {
-        printf("  flattened device tree is:              INVALID (%d)\n", validation_error);
-        panic("Cannot continue without a valid device tree.");
-    }
-    else {
-        printf("  flattened device tree is:              VALID\n", validation_error);
-    }
-
-
-    while(1) {}
+    // If we've made it here, we failed to boot, and we can't recover.:
+    panic("Discharge terminated without transferring control to Xen!");
 }
