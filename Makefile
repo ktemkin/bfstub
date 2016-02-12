@@ -10,6 +10,15 @@ include lib/fdt/Makefile.libfdt
 # Allow user of our libraries.
 VPATH = .:lib:lib/fdt
 
+# Specify the subimage to be integrated into discharge,
+# without the fit extension.
+SUBIMAGE = subimage
+SUBIMAGE_COMPONENTS = \
+	subimage/xen \
+	subimage/xen.dts \
+	subimage/Image
+SUBIMAGE_PADDING = 0
+
 # Build the discharge binary.
 TARGET = discharge
 OBJS = \
@@ -44,8 +53,11 @@ LDFLAGS =
 %.o: %.c
 	$(CC) $(CFLAGS) $< -c -o $@
 
-$(TARGET).fit: $(TARGET).bin $(TARGET).its
-	mkimage -f $(TARGET).its $(TARGET).fit
+$(TARGET).fit: $(TARGET).bin $(TARGET).its $(SUBIMAGE).fit
+	dtc -I dts -O dtb $(TARGET).its > $(TARGET).fit
+
+$(SUBIMAGE).fit: subimage/$(SUBIMAGE).its $(SUBIMAGE_COMPONENTS)
+	pushd subimage; dtc -p $(SUBIMAGE_PADDING) -I dts -O dtb $(SUBIMAGE).its > ../$(SUBIMAGE).fit; popd
 
 $(TARGET).bin: $(TARGET).elf
 	$(OBJCOPY) -v -O binary $< $@

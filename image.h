@@ -50,7 +50,7 @@ int ensure_image_is_accessible(const void *image);
  *    loaded image's size.
  * @return The address of the component, or NULL on error.
  */
-const void * load_image_component(const void *image, const char * path, int * size);
+void * load_image_component(const void *image, const char * path, int * size);
 
 
 /**
@@ -62,6 +62,21 @@ const void * load_image_component(const void *image, const char * path, int * si
  *    Should be below 4GiB, as this is what Xen accepts.
  * @param size The size of the linux kernel, in bytes.
  */
-void update_fdt_for_xen(void const *fdt, const void *linux_kernel, const int size);
+int update_fdt_for_xen(void *fdt, const void *linux_kernel, const int size);
+
+
+/**
+ * Loads an subimage device tree into its final execution location, and returns
+ * a pointer to the completed binary. Similar to load_image_component, but uses
+ * FDT unpacking methods to create a new FDT in the target location, allowing
+ * the FDT to expand into the free space.
+ *
+ * Expansion is controlled by the "extra-space" node in the subimage tree.
+ *
+ * @param image The image from which the blob should be extracted.
+ * @param path The path to the node that represents the given image.
+ * @return The address of the component, or NULL on error.
+ */
+void * load_image_fdt(const void *image, const char *path);
 
 #endif

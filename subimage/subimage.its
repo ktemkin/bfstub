@@ -27,6 +27,7 @@
             type = "flat_dt";
             arch = "arm64";
             load = <0x80300000>;
+
             compression = "none";
             hash@1 {
                 algo = "sha1";
@@ -40,8 +41,7 @@
             arch = "arm64";
             os = "linux";
             compression = "none";
-            load = <0x80600000>;
-            entry = <0x80600000>;
+            load = <0x80320000>;
 
             hash@1 {
                 algo = "sha1";

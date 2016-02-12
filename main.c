@@ -132,10 +132,10 @@ void launch_kernel(const void *kernel, const void *fdt)
  *
  * @return The component, on successful load. Panics on failure, halting the CPU.
  */
-const void * load_image_component_verbosely(const void * image,
+void * load_image_component_verbosely(const void * image,
     const char * path, const char * description, int * size)
 {
-    const void * component;
+    void * component;
 
     printf("\nLoading %s image...\n", description);
     component = load_image_component(image, path, size);
@@ -146,11 +146,36 @@ const void * load_image_component_verbosely(const void * image,
 }
 
 
+/**
+ * Extract and relocate the image component at the proivded image path,
+ * using the load address specified in the image.
+ *
+ * @param image The image from which the component should be extracted.
+ * @param path The path in the image at which the component should be located.
+ * @param description A short description of the image for verbose output.
+ *
+ * @return The component, on successful load. Panics on failure, halting the CPU.
+ */
+void * load_image_fdt_verbosely(const void * image,
+    const char * path, const char * description)
+{
+    void * component;
+
+    printf("\nLoading %s image...\n", description);
+    component = load_image_fdt(image, path);
+    if(!component)
+        panic("Failed to load a required image!");
+
+    return component;
+}
+
+
 void main(void * fdt, uint32_t el)
 {
     const void *fit_image;
-    const void *xen_kernel, *target_fdt, *dom0_kernel;
+    void *xen_kernel, *target_fdt, *dom0_kernel;
     int dom0_kernel_size;
+    int rc;
 
     intro(el);
 
@@ -162,12 +187,20 @@ void main(void * fdt, uint32_t el)
         panic("Could not find any images to load.");
 
     // Extract the images that we'll need to boot from.
+    //
+    // Note that we have to be a bit picky about this order, as we don't have much space to operate in,
+    // and thus it may be acceptable to have the huge dom0 image trample the source images if it's the
+    // last to load. We'll work to keep that as the last loaded component to allow this freedom.
     xen_kernel  = load_image_component_verbosely(fit_image, "/images/xen_kernel@1", "Xen kernel", NULL);
     target_fdt  = load_image_component_verbosely(fit_image, "/images/fdt@1", "device tree", NULL);
     dom0_kernel = load_image_component_verbosely(fit_image, "/images/linux_kernel@1", "dom0 kernel", &dom0_kernel_size);
 
+    // TODO: Add ramdisk support.
+
     // Update the module information we'll pass to Xen.
-    update_fdt_for_xen(target_fdt, dom0_kernel, dom0_kernel_size);
+    rc = update_fdt_for_xen(target_fdt, dom0_kernel, dom0_kernel_size);
+    if(rc != SUCCESS)
+      panic("Could not populate device tree with the dom0 location!");
 
     // Finally, boot into the Xen kernel.
     launch_kernel(xen_kernel, target_fdt);

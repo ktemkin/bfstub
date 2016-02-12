@@ -62,23 +62,6 @@ int ensure_image_is_accessible(const void *image)
     return SUCCESS;
 }
 
-/**
- * Finds the chosen node in the Discharged FDT, which contains
- * e.g. the location of our final payload.
- */
-int find_chosen_node(void * fdt)
-{
-    int node = fdt_path_offset(fdt, "/chosen");
-
-    // If we weren't able to get the chosen node, return NULL.
-    if(node < 0) 
-        printf("ERROR: Could not find chosen node! (%d)", node);
-    else
-        printf("  chosen node found at offset:           %d\n", node);
-
-    return node;
-}
-
 
 /**
  * Converts a 32-bit devicetree location (e.g. our subimage location)
@@ -87,6 +70,24 @@ int find_chosen_node(void * fdt)
 void * location_from_devicetree(uint32_t metalocation)
 {
     return (void *)(uintptr_t)fdt32_to_cpu(metalocation);
+}
+
+
+/**
+ * Finds the chosen node in the Discharged FDT, which contains
+ * e.g. the location of our final payload.
+ */
+int find_node(const void * image, const char * path)
+{
+    int node = fdt_path_offset(image, path);
+
+    // If we weren't able to get the chosen node, return NULL.
+    if(node < 0)
+        printf("ERROR: Could not find path %s in subimage! (%d)", path, node);
+    else
+        printf("  image node found at offset:            %d\n", node);
+
+    return node;
 }
 
 
@@ -109,7 +110,7 @@ const void * find_fit_subimage(void *fdt)
 
     // Find the node that describes our main payload.
     printf("\nExtracting main fit image...\n");
-    chosen_node = find_chosen_node(fdt);
+    chosen_node = find_node(fdt, "/chosen");
 
     if(chosen_node < 0)
         return NULL;
@@ -140,27 +141,81 @@ const void * find_fit_subimage(void *fdt)
     return subimage;
 }
 
-
 /**
- * Finds the chosen node in the Discharged FDT, which contains
- * e.g. the location of our final payload.
+ * Fetches the information necessary to load a subcomponent into memory,
+ * querying the properites from the provided FIT image.
+ *
+ * @param image The image from which components are to be loaded.
+ * @param path The string path to the component of the FIT image, e.g.
+ *    "/images/kernel@0"
+ * @param out_load_location Out argument; receives a pointer to the physical
+ *    address to which the subcomponent wants to be loaded.
+ * @param out_data_location Out argument; receives a pointer to the physical
+ *    address at which the data to be loaded is currently resident.
+ * @param out_size Out argument; receives the size of the subcomponent.
+ * @param node_offset Optional out argument. If non-null, receives the location
+ *    of the node that describes the given subcomponent, for furhter processing.
+ *
+ * @return SUCCESS on success, or an error code on failure.
  */
-int find_node(const void * image, const char * path)
+int get_subcomponent_information(const void *image, const char *path,
+    void **out_load_location, void const**out_data_location, int *out_size,
+    int * node_offset)
 {
-    int node = fdt_path_offset(image, path);
+    const uint32_t const *load_information_location;
+    const void *data_location;
+    void *load_location;
 
-    // If we weren't able to get the chosen node, return NULL.
+    int node, load_information_size, size;
+
+    // Before running, check all of our pointers for validity.
+    if(!out_data_location || !out_load_location || !out_size)
+        return -FDT_ERR_BADVALUE;
+
+    // Find the FIT node that describes the image.
+    node = find_node(image, path);
     if(node < 0)
-        printf("ERROR: Could not find xen kernel in subimage! (%d)", node);
-    else
-        printf("  image node found at offset:            %d\n", node);
+        return node;
 
-    return node;
+    // Locate the node that specifies where we should load this image from.
+    data_location = fdt_getprop(image, node, "data", &size);
+    if(size <= 0) {
+        printf("ERROR: Couldn't find the data to load! (%d)", size);
+        return size;
+    }
+
+    // Print out statistics regarding the loaded image...
+    printf("  loading image from:                    0x%p\n", data_location);
+    printf("  loading a total of:                    %d bytes\n", size);
+
+    // Locate the FIT node that specifies where we should load this image component to.
+    load_information_location = fdt_getprop(image, node, "load", &load_information_size);
+    if(load_information_size <= 0) {
+        printf("ERROR: Couldn't determine where to load to! (%d)", load_information_size);
+        return load_information_size;
+    }
+
+    // Retrieve the load location.
+    load_location = location_from_devicetree(*load_information_location);
+    printf("  loading image to location:             0x%p\n", load_location);
+    printf("  image will end at address:             0x%p\n", load_location + size);
+
+    // Set our out arguments, and return success.
+    *out_load_location = load_location;
+    *out_data_location = data_location;
+    *out_size = size;
+
+    // If a node argument was provided, set the active node for further
+    // processing.
+    if(node)
+      *node_offset = node;
+
+    return SUCCESS;
 }
 
 
 /**
- * Loads an subimage componen tinto its final execution location, and returns a
+ * Loads an subimage component into its final execution location, and returns a
  * pointer to the completed binary. Performs only basic sanity checking.
  *
  * @param image The image from which the blob should be extracted.
@@ -169,46 +224,20 @@ int find_node(const void * image, const char * path)
  *    loaded image's size.
  * @return The address of the component, or NULL on error.
  */
-const void * load_image_component(const void *image, const char *path, int *out_size)
+void * load_image_component(const void *image, const char *path, int *out_size)
 {
-    const uint32_t const *load_information_location;
     const void *data_location;
     void *load_location;
+    int size, rc;
 
-    int node, load_information_size, size;
+    // Get the information that describe where our information is located...
+    rc = get_subcomponent_information(image, path, &load_location,
+        &data_location, &size, NULL);
 
-    // Find the FIT node that describes the image.
-    node = find_node(image, path);
-    if(node < 0)
+    if(rc != SUCCESS)
         return NULL;
 
-    // Locate the node that specifies where we should load this image from.
-    data_location = fdt_getprop(image, node, "data", &size);
-    if(size <= 0) {
-        printf("ERROR: Couldn't find the data to load! (%d)", size);
-        return NULL;
-    }
-
-    // Print out statistics regarding the loaded image...
-    printf("  loading image from:                    0x%p\n", data_location);
-    printf("  loading a total of:                    %d bytes\n", size);
-
-
-    // Locate the FIT node that specifies where we should load this image component to.
-    load_information_location = fdt_getprop(image, node, "load", &load_information_size);
-    if(load_information_size <= 0) {
-        printf("ERROR: Couldn't determine where to load to! (%d)", load_information_size);
-        return NULL;
-    }
-
-    // Retrieve the load location.
-    load_location = location_from_devicetree(*load_information_location);
-    printf("  loading image to location:             0x%p\n", load_location);
-    printf("  image will end at address:             0x%p\n", load_location + size);
-
-    // TODO: Sanity check bounds!
-
-    // Finally, copy the data to its final location...
+    // Trivial load: copy the gathered information to its final location.
     memmove(load_location, data_location, size);
     printf("  total copied:                          %d bytes\n", size);
 
@@ -219,6 +248,59 @@ const void * load_image_component(const void *image, const char *path, int *out_
     return load_location;
 }
 
+
+/**
+ * Loads an subimage device tree into its final execution location, and returns
+ * a pointer to the completed binary. Similar to load_image_component, but uses
+ * FDT unpacking methods to create a new FDT in the target location, allowing
+ * the FDT to expand into any subsequent free space.
+ *
+ * @param image The image from which the blob should be extracted.
+ * @param path The path to the node that represents the given image.
+ * @param next_component The location of the component that will follow the FDT
+ *    in memory once loaded. Used to determine how much we can grow the FDT.
+ * @return The address of the component, or NULL on error.
+ */
+void * load_image_fdt(const void *image, const char *path)
+{
+    const uint32_t *extra_space_location;
+    const void *data_location;
+    void *load_location;
+
+    int size, node, extra_space, extra_space_size, rc;
+
+
+    // Get the information that describe where our information is located...
+    rc = get_subcomponent_information(image, path, &load_location,
+        &data_location, &size, &node);
+
+    if(rc != SUCCESS)
+        return NULL;
+
+    // And query for how much extra space we should add to the FDT,
+    // to allow the FDT to grow, so we can add new paramters.
+    extra_space_location = fdt_getprop(image, node, "extra-space", &extra_space_size);
+    if(extra_space_size <= 0) {
+        printf("ERROR: Couldn't determine how much extra space to grant FDT! (%d)", extra_space_size);
+        return NULL;
+    }
+
+    // Retrieve the load location.
+    extra_space = fdt32_to_cpu(*extra_space_location);
+    size       += extra_space;
+    printf("  image requests extra space:            %d bytes\n", extra_space);
+    printf("  growing device tree to:                %d bytes\n", size);
+    printf("  expanded image will end at:            0x%p", load_location + size);
+
+    // Load the FDT into its new location, converting it if necessary,
+    // and expanding it to fill the free space for future modifications.
+    fdt_open_into(data_location, load_location, size);
+    printf("  device tree instantiated of size:      %d bytes\n", fdt_totalsize(load_location));
+
+    return load_location;
+}
+
+
 /**
  * Updates the provided FDT to contain information as to the in-memory location
  * of the linux kernel to be used dom0.
@@ -227,8 +309,64 @@ const void * load_image_component(const void *image, const char *path, int *out_
  * @param linux_kernel The address at which the linux kernel resides in memory.
  *    Should be below 4GiB, as this is what Xen accepts.
  * @param size The size of the linux kernel, in bytes.
+ * 
+ * @return SUCCESS on SUCCESS, or an error code on failure.
  */
-void update_fdt_for_xen(void const *fdt, const void *linux_kernel, const int size)
+int update_fdt_for_xen(void *fdt, const void *linux_kernel, const int size)
 {
-    
+    int module_node, rc;
+    int root_node = find_node(fdt, "/");
+
+    // Ensure that we /have/ a chosen node. If we don't, it's likely not worth
+    // creating one, as things like the Xen boot arguments will be missing.
+    if(root_node < 0) {
+        printf("ERROR: Could not find the required root node in the target FDT (%d)!\n", root_node);
+        return root_node;
+    }
+
+    // Create a module node for Xen's representation of the linux kernel.
+    module_node = fdt_add_subnode(fdt, root_node, "module@0");
+
+    // If the module already exists, we'll use it in-place.
+    if(module_node == -FDT_ERR_EXISTS) {
+      module_node = find_node(fdt, "/module@0");
+    }
+
+    // If we weren't able to resolve the module node, fail out.
+    if(module_node < 0) {
+        printf("ERROR: Could not add the module subnode to the target FDT (%d)!\n", module_node);
+        return module_node;
+    }
+
+    // Set the new module's compatible to indicate this is the dom0 kernel.
+    rc = fdt_setprop_string(fdt, module_node, "compatible", "multiboot,kernel");
+    if(rc != SUCCESS) {
+        printf("ERROR: Could not set up the linux kernel node identifier! (%d)\n", rc);
+        return rc;
+    }
+
+
+    // Set the new module's compatible to indicate this is the dom0 kernel.
+    rc = fdt_appendprop_string(fdt, module_node, "compatible", "multiboot,module");
+    if(rc != SUCCESS) {
+        printf("ERROR: Could not set up the linux kernel node identifier! (%d)\n", rc);
+        return rc;
+    }
+
+    // Add the kernel's location...
+    rc = fdt_setprop_u64(fdt, module_node, "reg", (uint64_t)linux_kernel);
+    if(rc != SUCCESS) {
+        printf("ERROR: Could not add the linux kernel's location to the node! (%d)\n", rc);
+        return rc;
+    }
+
+    // ... and add its size.
+    rc = fdt_appendprop_u64(fdt, module_node, "reg", (uint64_t)size);
+    if(rc != SUCCESS) {
+        printf("ERROR: Could not add the linux kernel's size to the node! (%d)\n", rc);
+        return rc;
+    }
+
+    // If all of these steps succeeded, we're ready to launch the kernel!
+    return SUCCESS;
 }

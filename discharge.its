@@ -42,7 +42,7 @@
          */
         ramdisk@1 {
             description = "Discharge payload";
-            data = /incbin/("subimage/subimage.fit");
+            data = /incbin/("subimage.fit");
             type = "ramdisk";
             arch = "arm64";
             compression = "none";
