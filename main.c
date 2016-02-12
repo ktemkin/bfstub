@@ -50,7 +50,7 @@ void intro(uint32_t el)
     printf("   depthcharge -> xen adapter      |___/   v0 \n");
 
     printf("\n\nInitializing discharge...\n");
-    printf("  current execution level:               %u\n", el);
+    printf("  current execution level:               EL%u\n", el);
     printf("  hypervisor applications supported:     %s\n", (el == 2) ? "YES" : "NO");
 
 }
@@ -94,12 +94,55 @@ void load_device_tree(void *fdt)
     printf("  flattened device size:                 %d bytes \n", fdt_totalsize(fdt));
 }
 
-void launch_kernel(const void * kernel_addr)
+/**
+ * Launch an executable kernel image. Should be the last thing called by
+ * Discharge, as it does not return.
+ *
+ * @param kernel The kernel to be executed.
+ * @param fdt The device tree to be passed to the given kernel.
+ */
+void launch_kernel(const void *kernel, const void *fdt)
 {
-    void (*kernel)(void) = kernel_addr;
+    const char * fdt_raw = fdt;
+
+    // Construct a function pointer to our kernel, which will allow us to
+    // jump there immediately. Note that we don't care what this leaves on
+    // the stack, as either our entire stack will be ignored, or it'll
+    // be torn down by the target kernel anyways.
+    void (*target_kernel)(const void *fdt) = kernel;
+
+    // Perform a quick sanity check of the given FDT.
+    if(fdt_check_header(fdt) != SUCCESS) {
+        printf("WARNING: The loaded device tree seems to be invalid!"
+            " (magic = %02x%02x%02x%02x)\n", fdt_raw[0], fdt_raw[1], fdt_raw[2], fdt_raw[3]);
+        printf("         Continuing, but this will likely result in a crash.\n\n");
+    }
 
     printf("\n Launching Xen...\n");
-    kernel();
+    target_kernel(fdt);
+}
+
+/**
+ * Extract and relocate the image component at the proivded image path,
+ * using the load address specified in the image.
+ *
+ * @param image The image from which the component should be extracted.
+ * @param path The path in the image at which the component should be located.
+ * @param description A short description of the image for verbose output.
+ *
+ * @return The component, on successful load. Panics on failure, halting the CPU.
+ */
+const void * load_image_component_verbosely(const void * image,
+    const char * path, const char * description, int * size)
+{
+    const void * component;
+
+    printf("\nLoading %s image...\n", description);
+    component = load_image_component(image, path, size);
+    if(!component)
+        panic("Failed to load a required image!");
+
+    return component;
 }
 
 
@@ -107,6 +150,7 @@ void main(void * fdt, uint32_t el)
 {
     const void *fit_image;
     const void *xen_kernel, *target_fdt, *dom0_kernel;
+    int dom0_kernel_size;
 
     intro(el);
 
@@ -117,31 +161,17 @@ void main(void * fdt, uint32_t el)
     if(!fit_image)
         panic("Could not find any images to load.");
 
-    // Extract/relocate the Xen kernel from our image.
-    printf("\nLoading Xen kernel image...\n");
-    xen_kernel = load_image_component(fit_image, "/images/xen_kernel@1");
-    if(!xen_kernel)
-        panic("Could not load the Xen kernel!");
+    // Extract the images that we'll need to boot from.
+    xen_kernel  = load_image_component_verbosely(fit_image, "/images/xen_kernel@1", "Xen kernel", NULL);
+    target_fdt  = load_image_component_verbosely(fit_image, "/images/fdt@1", "device tree", NULL);
+    dom0_kernel = load_image_component_verbosely(fit_image, "/images/linux_kernel@1", "dom0 kernel", &dom0_kernel_size);
 
-    // Extract/relocate the target FDT.
-    printf("\nLoading target device tree...\n");
-    target_fdt = load_image_component(fit_image, "/images/fdt@1");
-    if(!target_fdt)
-        panic("Could not load the target device tree!");
+    // Update the module information we'll pass to Xen.
+    update_fdt_for_xen(target_fdt, dom0_kernel, dom0_kernel_size);
 
-    // Extract/relocate the dom0 kernel.
-    printf("\nLoading Linux kernel image...\n");
-    dom0_kernel = load_image_component(fit_image, "/images/linux_kernel@1");
-    if(!dom0_kernel)
-        panic("Could not load the Linux kernel!");
+    // Finally, boot into the Xen kernel.
+    launch_kernel(xen_kernel, target_fdt);
 
-
-    printf("\nWARNING: Not fully implemented. Without device tree mods\n");
-    printf("          expect Xen to crash and burn.\n");
-
-    //Boot into the Xen kernel.
-    launch_kernel(xen_kernel);
-
-    // If we've made it here, we failed to boot, and we can't recover.:
+    // If we've made it here, we failed to boot, and we can't recover.
     panic("Discharge terminated without transferring control to Xen!");
 }

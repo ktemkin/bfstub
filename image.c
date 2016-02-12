@@ -165,9 +165,11 @@ int find_node(const void * image, const char * path)
  *
  * @param image The image from which the blob should be extracted.
  * @param path The path to the node that represents the given image.
+ * @param out_size If non-NULL, this out argument will be popualted with the
+ *    loaded image's size.
  * @return The address of the component, or NULL on error.
  */
-const void * load_image_component(const void *image, const char * path)
+const void * load_image_component(const void *image, const char *path, int *out_size)
 {
     const uint32_t const *load_information_location;
     const void *data_location;
@@ -206,9 +208,27 @@ const void * load_image_component(const void *image, const char * path)
 
     // TODO: Sanity check bounds!
 
-    // Finally, copy the data to its final location.
+    // Finally, copy the data to its final location...
     memmove(load_location, data_location, size);
     printf("  total copied:                          %d bytes\n", size);
 
+    // ... and update our size out argument, if provided.
+    if(out_size)
+      *out_size = size;
+
     return load_location;
+}
+
+/**
+ * Updates the provided FDT to contain information as to the in-memory location
+ * of the linux kernel to be used dom0.
+ *
+ * @param fdt The target device tree to be updated.
+ * @param linux_kernel The address at which the linux kernel resides in memory.
+ *    Should be below 4GiB, as this is what Xen accepts.
+ * @param size The size of the linux kernel, in bytes.
+ */
+void update_fdt_for_xen(void const *fdt, const void *linux_kernel, const int size)
+{
+    
 }

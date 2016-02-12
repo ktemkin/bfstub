@@ -27,7 +27,7 @@ SECTIONS
 
 	. = ALIGN(4);
 	.text : {
-    PROVIDE(image_start = .);
+    PROVIDE(discharge_start = .);
 		start.o	(.text)
 		*(.text)
 	}
@@ -53,6 +53,7 @@ SECTIONS
   . = ALIGN(16);
   . += 0x10000; /* 64 KiB stack */
   stack_end = .;
+  discharge_end = .;
 
 	/DISCARD/ : { *(.dynstr*) }
 	/DISCARD/ : { *(.dynamic*) }

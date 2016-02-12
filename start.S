@@ -28,7 +28,6 @@
 .section ".text"
 
 .globl _header
-.globl image_start
 /*
  * x0 contains the FDT blob PA, which we don't use
  */
