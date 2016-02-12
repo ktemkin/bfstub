@@ -1,5 +1,5 @@
 /**
- * Cache management helpers for Discharge
+ * Configuration values for Discharge.
  *
  * Copyright (C) Assured Information Security, Inc.
  *      Author: Kyle J. Temkin <temkink@ainfosec.com>
@@ -27,18 +27,10 @@
  * SUCH DAMAGE.
  */
 
-#ifndef __CACHE_H__
-#define __CACHE_H__
+#ifndef __CONFIG_H__
+#define __CONFIG_H__
 
-/**
- * Invalidate the cache line relevant to the provided address.
- */
-void __invalidate_cache_line(void * addr);
+const char * const initrd_node = "linux,initrd-start";
 
-
-/**
- * Invalides any cache lines that store data relevant to a given regsion.
- */
-void __invalidate_cache_region(void * addr, size_t length);
 
 #endif

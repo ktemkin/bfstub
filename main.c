@@ -31,6 +31,8 @@
 #include <libfdt.h>
 #include <cache.h>
 
+#include "subimage.h"
+
 /**
  * Print our intro message. This is surprisignly nice as a
  * boundary between serial output, as we're the firt real serial
@@ -38,16 +40,16 @@
  */
 void intro(uint32_t el)
 {
-    puts("      _ _          _                          \n");
-    puts("     | (_)        | |                         \n");
-    puts("   __| |_ ___  ___| |__   __ _ _ __ __ _  ___ \n");
-    puts("  / _` | / __|/ __| '_ \\ / _` | '__/ _` |/ _ \\\n");
-    puts(" | (_| | \\__ \\ (__| | | | (_| | | | (_| |  __/\n");
-    puts("  \\__,_|_|___/\\___|_| |_|\\__,_|_|  \\__, |\\___|\n");
-    puts("                                    __/ |     \n");
-    puts("   depthcharge -> xen adapter      |___/   v0 \n");
+    printf("      _ _          _                          \n");
+    printf("     | (_)        | |                         \n");
+    printf("   __| |_ ___  ___| |__   __ _ _ __ __ _  ___ \n");
+    printf("  / _` | / __|/ __| '_ \\ / _` | '__/ _` |/ _ \\\n");
+    printf(" | (_| | \\__ \\ (__| | | | (_| | | | (_| |  __/\n");
+    printf("  \\__,_|_|___/\\___|_| |_|\\__,_|_|  \\__, |\\___|\n");
+    printf("                                    __/ |     \n");
+    printf("   depthcharge -> xen adapter      |___/   v0 \n");
 
-    puts("\n\nInitializing discharge...\n");
+    printf("\n\nInitializing discharge...\n");
     printf("  current execution level:               %u\n", el);
     printf("  hypervisor applications supported:     %s\n", (el == 2) ? "YES" : "NO");
 
@@ -109,7 +111,7 @@ void load_device_tree(void *fdt)
     int rc;
     char * fdt_raw = fdt;
 
-    puts("Loading device tree...\n");
+    printf("Loading device tree...\n");
     rc = ensure_fdt_is_accessible(fdt);
 
     printf("  flattened device tree resident at:     0x%p\n", fdt);
@@ -123,22 +125,20 @@ void load_device_tree(void *fdt)
 }
 
 
-/**
- * Loads the Xen kernel into memory, and returns its address.
- */
-void * load_xen_kernel(void *fdt)
-{
-
-
-}
-
-
 
 void main(void * fdt, uint32_t el)
 {
+    void * fit_image;
+
     intro(el);
 
     load_device_tree(fdt);
+    fit_image = find_fit_subimage(fdt);
+
+    if(!fit_image)
+        panic("Could not find any images to load");
+
+    (void)fit_image;
 
     // If we've made it here, we failed to boot, and we can't recover.:
     panic("Discharge terminated without transferring control to Xen!");

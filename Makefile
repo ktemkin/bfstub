@@ -12,6 +12,15 @@ VPATH = .:lib:lib/fdt
 
 # Build the discharge binary.
 TARGET = discharge
+OBJS = \
+	start.o \
+	main.o \
+	microlib.o \
+	printf.o \
+	memmove.o \
+	cache.o \
+	subimage.o \
+	$(LIBFDT_OBJS)
 
 CFLAGS = \
   -Iinclude \
@@ -43,7 +52,7 @@ $(TARGET).fit: $(TARGET).bin $(TARGET).its
 $(TARGET).bin: $(TARGET).elf
 	$(OBJCOPY) -v -O binary $< $@
 
-$(TARGET).elf: start.o main.o microlib.o printf.o memmove.o cache.o $(LIBFDT_OBJS)
+$(TARGET).elf: $(OBJS)
 	$(LD) -T boot.lds $(LDFLAGS) $^ -o $@
 
 clean:
