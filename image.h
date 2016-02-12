@@ -29,7 +29,15 @@
 #include <microlib.h>
 #include <libfdt.h>
 
-void * find_fit_subimage(void *fdt);
+const void * find_fit_subimage(void *fdt);
+
+/**
+ * Ensures that a valid FDT/image is accessible for the system, performing any
+ * steps necessary to make the image accessible, and validating the device tree.
+ *
+ * @return SUCCESS, or an FDT error code.
+ */
+int ensure_image_is_accessible(const void *image);
 
 
 #endif

@@ -69,7 +69,7 @@ size_t __dcache_line_bytes(void)
 /**
  * Cleans the cache line that represents the provided address.
  */
-void __invalidate_cache_line(void * addr)
+void __invalidate_cache_line(const void * addr)
 {
     asm volatile("dc civac, %0" :: "r" (addr));
 }
@@ -78,10 +78,10 @@ void __invalidate_cache_line(void * addr)
 /**
  * Invalides any cache lines that store data relevant to a given regsion.
  */
-void __invalidate_cache_region(void * addr, size_t length)
+void __invalidate_cache_region(const void * addr, size_t length)
 {
     size_t bytes_per_line = __dcache_line_bytes();
-    void * end_addr = addr + length;
+    const void * end_addr = addr + length;
 
     while(addr <= end_addr) {
         __invalidate_cache_line(addr);

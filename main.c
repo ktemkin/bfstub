@@ -31,7 +31,7 @@
 #include <libfdt.h>
 #include <cache.h>
 
-#include "subimage.h"
+#include "image.h"
 
 /**
  * Print our intro message. This is surprisignly nice as a
@@ -62,9 +62,9 @@ void intro(uint32_t el)
 void panic(const char * message)
 {
     printf("\n\n");
-    printf("-----------------------------\n");
+    printf("-----------------------------------------------------------------\n");
     printf("PANIC: %s\n", message);
-    printf("-----------------------------\n");
+    printf("-----------------------------------------------------------------\n");
 
     // TODO: This should probably induce a reboot,
     // rather than sticking here.
@@ -72,36 +72,6 @@ void panic(const char * message)
 }
 
 
-/**
- * Ensures that a valid FDT is accessible for the system, performing any
- * steps necessary to make the FDT accessible, and validating the device tree.
- *
- * @return SUCCESS, or an FDT error code.
- */
-int ensure_fdt_is_accessible(void *fdt)
-{
-    int rc;
-
-    // Depthcharge loads the FDT into memory with the cache on, and doesn't
-    // flush the relevant cache lines when it switches the cache off. As a
-    // result, we'll need to flush the cache lines for it before we'll be able
-    // to see the FDT.
-
-    // We start by flushing our first cache line, which we assume is large
-    // enough to provide the first two fields of the FDT: an 8-byte magic number,
-    // and 8-byte size.
-    __invalidate_cache_line(fdt);
-
-    // Validate that we have a valid-appearing device tree.
-    rc = fdt_check_header(fdt);
-    if(rc)
-        return rc;
-
-    // If we do, invalidate the remainder of its cache lines.
-    __invalidate_cache_region(fdt, fdt_totalsize(fdt));
-
-    return SUCCESS;
-}
 
 /**
  * Main task for loading the system's device tree.
@@ -111,8 +81,8 @@ void load_device_tree(void *fdt)
     int rc;
     char * fdt_raw = fdt;
 
-    printf("Loading device tree...\n");
-    rc = ensure_fdt_is_accessible(fdt);
+    printf("\nLoading device tree...\n");
+    rc = ensure_image_is_accessible(fdt);
 
     printf("  flattened device tree resident at:     0x%p\n", fdt);
     printf("  flattened device tree magic is:        %02x%02x%02x%02x\n", fdt_raw[0], fdt_raw[1], fdt_raw[2], fdt_raw[3]);
@@ -128,7 +98,7 @@ void load_device_tree(void *fdt)
 
 void main(void * fdt, uint32_t el)
 {
-    void * fit_image;
+    const void * fit_image;
 
     intro(el);
 

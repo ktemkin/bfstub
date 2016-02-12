@@ -19,7 +19,7 @@ OBJS = \
 	printf.o \
 	memmove.o \
 	cache.o \
-	subimage.o \
+	image.o \
 	$(LIBFDT_OBJS)
 
 CFLAGS = \
