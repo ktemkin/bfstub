@@ -29,14 +29,12 @@ CFLAGS = \
 	-mlittle-endian \
 	-fno-stack-protector \
 	-mgeneral-regs-only \
-	-mstrict-align \
 	-fno-common \
 	-fno-builtin \
 	-ffreestanding \
 	-std=gnu99 \
 	-Werror \
-	-Wall \
-	-ggdb
+	-Wall
 
 LDFLAGS =
 

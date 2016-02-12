@@ -62,7 +62,10 @@ int ensure_image_is_accessible(const void *image)
     return SUCCESS;
 }
 
-
+/**
+ * Finds the chosen node in the Discharged FDT, which contains
+ * e.g. the location of our final payload.
+ */
 int find_chosen_node(void * fdt)
 {
     int node = fdt_path_offset(fdt, "/chosen");
@@ -71,7 +74,7 @@ int find_chosen_node(void * fdt)
     if(node < 0) 
         printf("ERROR: Could not find chosen node! (%d)", node);
     else
-        printf("  chosen node found at offset:           0x%d\n", node);
+        printf("  chosen node found at offset:           %d\n", node);
 
     return node;
 }
@@ -81,7 +84,7 @@ int find_chosen_node(void * fdt)
  * Converts a 32-bit devicetree location (e.g. our subimage location)
  * into a full 64-bit address.
  */
-const void * location_from_devicetree(uint32_t metalocation)
+void * location_from_devicetree(uint32_t metalocation)
 {
     return (void *)(uintptr_t)fdt32_to_cpu(metalocation);
 }
@@ -104,9 +107,12 @@ const void * find_fit_subimage(void *fdt)
     const uint32_t const * subimage_location;
     const char * subimage;
 
-    // Get the main location of the 
+    // Find the node that describes our main payload.
     printf("\nExtracting main fit image...\n");
     chosen_node = find_chosen_node(fdt);
+
+    if(chosen_node < 0)
+        return NULL;
 
     // Find the location of the initrd property, which holds our subimage...
     subimage_location = fdt_getprop(fdt, chosen_node, "linux,initrd-start", &subimage_location_size);
@@ -134,3 +140,75 @@ const void * find_fit_subimage(void *fdt)
     return subimage;
 }
 
+
+/**
+ * Finds the chosen node in the Discharged FDT, which contains
+ * e.g. the location of our final payload.
+ */
+int find_node(const void * image, const char * path)
+{
+    int node = fdt_path_offset(image, path);
+
+    // If we weren't able to get the chosen node, return NULL.
+    if(node < 0)
+        printf("ERROR: Could not find xen kernel in subimage! (%d)", node);
+    else
+        printf("  image node found at offset:            %d\n", node);
+
+    return node;
+}
+
+
+/**
+ * Loads an subimage componen tinto its final execution location, and returns a
+ * pointer to the completed binary. Performs only basic sanity checking.
+ *
+ * @param image The image from which the blob should be extracted.
+ * @param path The path to the node that represents the given image.
+ * @return The address of the component, or NULL on error.
+ */
+const void * load_image_component(const void *image, const char * path)
+{
+    const uint32_t const *load_information_location;
+    const void *data_location;
+    void *load_location;
+
+    int node, load_information_size, size;
+
+    // Find the FIT node that describes the image.
+    node = find_node(image, path);
+    if(node < 0)
+        return NULL;
+
+    // Locate the node that specifies where we should load this image from.
+    data_location = fdt_getprop(image, node, "data", &size);
+    if(size <= 0) {
+        printf("ERROR: Couldn't find the data to load! (%d)", size);
+        return NULL;
+    }
+
+    // Print out statistics regarding the loaded image...
+    printf("  loading image from:                    0x%p\n", data_location);
+    printf("  loading a total of:                    %d bytes\n", size);
+
+
+    // Locate the FIT node that specifies where we should load this image component to.
+    load_information_location = fdt_getprop(image, node, "load", &load_information_size);
+    if(load_information_size <= 0) {
+        printf("ERROR: Couldn't determine where to load to! (%d)", load_information_size);
+        return NULL;
+    }
+
+    // Retrieve the load location.
+    load_location = location_from_devicetree(*load_information_location);
+    printf("  loading image to location:             0x%p\n", load_location);
+    printf("  image will end at address:             0x%p\n", load_location + size);
+
+    // TODO: Sanity check bounds!
+
+    // Finally, copy the data to its final location.
+    memmove(load_location, data_location, size);
+    printf("  total copied:                          %d bytes\n", size);
+
+    return load_location;
+}

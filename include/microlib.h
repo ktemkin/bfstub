@@ -40,6 +40,9 @@ static const int SUCCESS = 0;
  */
 void * memcpy(void * dest, const void * src, size_t n);
 void * memmove(void *dst0, const void *src0, register size_t length);
+
+
+
 void putc(char c);
 void puts(char * s);
 size_t strlen(const char *s);

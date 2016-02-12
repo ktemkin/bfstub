@@ -12,8 +12,8 @@
             arch = "arm64";
             os = "linux";
             compression = "none";
-            load = <0x80110000>;
-            entry = <0x80110000>;
+            load = <0x80000000>;
+            entry = <0x80000000>;
         };
 
         /*
@@ -32,16 +32,17 @@
             };
         };
 
-
-        /*
-         * FIXME: This should be replaced with the actual image we're going
-         * but right now it's not being used, so we're sticking this blob
-         * in as a stub. Unfortunately, Depthcharge won't continue
-         * without an FDT, so we need to provide something.
+        /**
+         * Depthcharge only supports simple loads: we can only load a single
+         * kernel, device tree, and ramdisk -- and none of these are in the
+         * particular format that Xen expects. To pass it Xen as well, we
+         * coalesce all of the images we want into a second "payload" fit image,
+         * and then pass that in as a ramdisk. Discharge will then bootstrap the
+         * system from this new fit image.
          */
         ramdisk@1 {
             description = "Discharge payload";
-            data = /incbin/("placeholder.fit");
+            data = /incbin/("subimage/subimage.fit");
             type = "ramdisk";
             arch = "arm64";
             compression = "none";

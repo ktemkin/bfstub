@@ -13,8 +13,8 @@
             arch = "arm64";
             os = "linux";
             compression = "none";
-            load = <0x00080000>;
-            entry = <0x00080000>;
+            load = <0x80100000>;
+            entry = <0x80000000>;
 
             hash@1 {
                 algo = "sha1";
@@ -26,7 +26,7 @@
             data = /incbin/("xen.dtb");
             type = "flat_dt";
             arch = "arm64";
-            load = <0x00160000>;
+            load = <0x80200000>;
             compression = "none";
             hash@1 {
                 algo = "sha1";
@@ -40,8 +40,8 @@
             arch = "arm64";
             os = "linux";
             compression = "none";
-            load = <0x00080000>;
-            entry = <0x00080000>;
+            load = <0x80500000>;
+            entry = <0x80500000>;
 
             hash@1 {
                 algo = "sha1";

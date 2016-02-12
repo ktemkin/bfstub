@@ -94,21 +94,53 @@ void load_device_tree(void *fdt)
     printf("  flattened device size:                 %d bytes \n", fdt_totalsize(fdt));
 }
 
+void launch_kernel(const void * kernel_addr)
+{
+    void (*kernel)(void) = kernel_addr;
+
+    printf("\n Launching Xen...\n");
+    kernel();
+}
 
 
 void main(void * fdt, uint32_t el)
 {
-    const void * fit_image;
+    const void *fit_image;
+    const void *xen_kernel, *target_fdt, *dom0_kernel;
 
     intro(el);
 
     load_device_tree(fdt);
+
+    // Find the fit image, which contains our Xen/Linux payloads.
     fit_image = find_fit_subimage(fdt);
-
     if(!fit_image)
-        panic("Could not find any images to load");
+        panic("Could not find any images to load.");
 
-    (void)fit_image;
+    // Extract/relocate the Xen kernel from our image.
+    printf("\nLoading Xen kernel image...\n");
+    xen_kernel = load_image_component(fit_image, "/images/xen_kernel@1");
+    if(!xen_kernel)
+        panic("Could not load the Xen kernel!");
+
+    // Extract/relocate the target FDT.
+    printf("\nLoading target device tree...\n");
+    target_fdt = load_image_component(fit_image, "/images/fdt@1");
+    if(!target_fdt)
+        panic("Could not load the target device tree!");
+
+    // Extract/relocate the dom0 kernel.
+    printf("\nLoading Linux kernel image...\n");
+    dom0_kernel = load_image_component(fit_image, "/images/linux_kernel@1");
+    if(!dom0_kernel)
+        panic("Could not load the Linux kernel!");
+
+
+    printf("\nWARNING: Not fully implemented. Without device tree mods\n");
+    printf("          expect Xen to crash and burn.\n");
+
+    //Boot into the Xen kernel.
+    launch_kernel(xen_kernel);
 
     // If we've made it here, we failed to boot, and we can't recover.:
     panic("Discharge terminated without transferring control to Xen!");

@@ -40,4 +40,15 @@ const void * find_fit_subimage(void *fdt);
 int ensure_image_is_accessible(const void *image);
 
 
+/**
+ * Loads an subimage componen tinto its final execution location, and returns a
+ * pointer to the completed binary. Performs only basic sanity checking.
+ *
+ * @param image The image from which the blob should be extracted.
+ * @param path The path to the node that represents the given image.
+ * @return The address of the component, or NULL on error.
+ */
+const void * load_image_component(const void *image, const char * path);
+
+
 #endif
