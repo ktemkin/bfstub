@@ -237,6 +237,14 @@ void * load_image_component(const void *image, const char *path, int *out_size)
     if(rc != SUCCESS)
         return NULL;
 
+    // We're not using the cache, but Depthcharge was before us.
+    // To ensure that our next stage sees the proper memory, we'll have to
+    // make sure that there are no data cache entries for the regions we're
+    // about to touch. As there's no way to invalidate without cleaning via
+    // virtual address (i.e. all of the evicted cache lines will be written
+    // back), it's important that this runs before memmove.
+    __invalidate_cache_region(load_location, size);
+
     // Trivial load: copy the gathered information to its final location.
     memmove(load_location, data_location, size);
     printf("  total copied:                          %d bytes\n", size);
