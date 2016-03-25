@@ -15,7 +15,7 @@ VPATH = .:lib:lib/fdt
 SUBIMAGE = subimage
 SUBIMAGE_COMPONENTS = \
 	subimage/xen \
-	subimage/xen.dts \
+	subimage/xen.dtb \
 	subimage/Image
 SUBIMAGE_PADDING = 0
 
