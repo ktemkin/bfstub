@@ -57,7 +57,7 @@ $(TARGET).fit: $(TARGET).bin $(TARGET).its $(SUBIMAGE).fit
 	dtc -I dts -O dtb $(TARGET).its > $(TARGET).fit
 
 $(SUBIMAGE).fit: subimage/$(SUBIMAGE).its $(SUBIMAGE_COMPONENTS)
-	pushd subimage; dtc -p $(SUBIMAGE_PADDING) -I dts -O dtb $(SUBIMAGE).its > ../$(SUBIMAGE).fit; popd
+	cd subimage; dtc -p $(SUBIMAGE_PADDING) -I dts -O dtb $(SUBIMAGE).its > ../$(SUBIMAGE).fit; cd ..
 
 $(TARGET).bin: $(TARGET).elf
 	$(OBJCOPY) -v -O binary $< $@
