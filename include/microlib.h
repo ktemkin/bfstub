@@ -34,24 +34,39 @@
 
 static const int SUCCESS = 0;
 
-
 /**
- * Standard library functions. Exactly what you'd expect.
+ * Most of the time, we'll run baremetal without any standard library
+ * underneath us, so we'll want to declare some basic functions consumed
+ * by discharge and libfdt.
+ *
+ * When we're running unit tests, we'll want to use the system headers--
+ * which are required by our testing framework-- even if we'll still be linking
+ * against the microlib code.
  */
-void * memcpy(void * dest, const void * src, size_t n);
-void * memmove(void *dst0, const void *src0, register size_t length);
+#ifndef __USE_SYSTEM_HEADERS__
 
+  // Discharge currently has no reason to support input streams, so we'll
+  // ignore these and print everything to the serial log.
+  #define stdin 0
 
+  void * memcpy(void * dest, const void * src, size_t n);
+  void * memmove(void *dst0, const void *src0, register size_t length);
 
-void putc(char c);
-void puts(char * s);
-size_t strlen(const char *s);
-size_t memcmp(const void *s1, const void *s2, size_t n);
-size_t strnlen(const char *s, size_t max);
-void * memchr(const void *s, int c, size_t n);
-void * memset(void *b, int c, size_t len);
+  void putc(char c, void *stream);
+  extern int puts(const char * s);
+  size_t strlen(const char *s);
+  size_t memcmp(const void *s1, const void *s2, size_t n);
+  size_t strnlen(const char *s, size_t max);
+  void * memchr(const void *s, int c, size_t n);
+  void * memset(void *b, int c, size_t len);
 
-int printf(const char *fmt, ...);
+  int printf(const char *fmt, ...);
+
+#else
+  #include <stdio.h>
+  #include <string.h>
+  #include <stdlib.h>
+#endif
 
 
 /**
