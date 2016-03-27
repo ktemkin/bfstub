@@ -1,5 +1,5 @@
 /**
- * Tests for the image-loading components of 
+ * Tests helpers for testing discharge.
  *
  * Copyright (C) 2016 Assured Information Security, Inc.
  *      Author: Kyle J. Temkin <temkink@ainfosec.com>
@@ -23,10 +23,41 @@
  *  DEALINGS IN THE SOFTWARE.
  */
 
-#define NO_HIPPOMOCKS_NAMESPACE
-#define LINUX_TARGET
+#include <vector>
+#include <cstdlib>
+#include <fstream>
 
-#include "catch.hpp"
-#include "hippomocks.h"
+/**
+ * Simple class that provides scoped-duration access to a binary file
+ * in a C-friendly way. Mostly syntactic sugar.
+ */
+class BinaryFile {
 
-#include "helpers.h"
+  public:
+
+      /**
+       * Creates a new BinaryFile object.
+       *
+       * @param path The path to the file to be opened.
+       */
+      BinaryFile(const char * path);
+
+      /**
+       * @return The total number of bytes in the file.
+       */
+      size_t size();
+
+      /**
+       * @return a pointer to the raw data content of the file.
+       */
+      void *raw_bytes();
+
+      /**
+       * @return a pointer to the raw data content of the file.
+       */
+      operator void*();
+      operator char*();
+
+  private:
+      std::vector<char> data;
+};

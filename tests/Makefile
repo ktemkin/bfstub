@@ -45,6 +45,7 @@ CFLAGS = \
 	-ffreestanding \
 
 CXXFLAGS = \
+	-std=c++11 \
 	$(COMMON_FLAGS)
 
 LDFLAGS =
@@ -54,7 +55,7 @@ all: run_tests
 run_tests: $(TARGET)
 	./test_runner
 
-$(TARGET): $(TARGET).o $(OBJS) $(TESTS)
+$(TARGET): $(TARGET).o $(OBJS) $(TESTS) helpers.o
 	$(CXX) $(CXXFLAGS) $^ -o $@
 
 %.o: %.S

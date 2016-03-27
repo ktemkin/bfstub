@@ -213,7 +213,7 @@ int get_subcomponent_information(const void *image, const char *path,
 
     // If a node argument was provided, set the active node for further
     // processing.
-    if(node)
+    if(node_offset)
       *node_offset = node;
 
     return SUCCESS;
@@ -262,6 +262,18 @@ void * load_image_component(const void *image, const char *path, int *out_size)
     return load_location;
 }
 
+/**
+ * Small convenience function that reads the desired amount of extra space
+ * for a loaded FDT, given a pointer to the property that describes it.
+ *
+ * This helper exists to simplify testing; as this method can be easily
+ * mocked, where a dereference can't easily be omitted.
+ */
+int __read_extra_space_from_fdt(const uint32_t *extra_space_location)
+{
+    return fdt32_to_cpu(*extra_space_location);
+}
+
 
 /**
  * Loads an subimage device tree into its final execution location, and returns
@@ -300,7 +312,7 @@ void * load_image_fdt(const void *image, const char *path)
     }
 
     // Retrieve the load location.
-    extra_space = fdt32_to_cpu(*extra_space_location);
+    extra_space = __read_extra_space_from_fdt(extra_space_location);
     size       += extra_space;
     printf("  image requests extra space:            %d bytes\n", extra_space);
     printf("  growing device tree to:                %d bytes\n", size);

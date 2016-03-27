@@ -1,5 +1,5 @@
 /**
- * Tests for the image-loading components of 
+ * Tests helpers for testing discharge.
  *
  * Copyright (C) 2016 Assured Information Security, Inc.
  *      Author: Kyle J. Temkin <temkink@ainfosec.com>
@@ -23,10 +23,51 @@
  *  DEALINGS IN THE SOFTWARE.
  */
 
-#define NO_HIPPOMOCKS_NAMESPACE
-#define LINUX_TARGET
-
-#include "catch.hpp"
-#include "hippomocks.h"
-
 #include "helpers.h"
+
+
+/**
+ * Creates a new BinaryFile object.
+ *
+ * @param path The path to the file to be opened.
+ */
+BinaryFile::BinaryFile(const char * filename)
+{
+    // Open the provided file.
+    std::ifstream file(filename, std::ios::binary | std::ios::ate);
+
+    if(!file) {
+        throw std::invalid_argument("Could not open file!");
+    }
+
+    // Determine the file's size...
+    std::streamsize size = file.tellg();
+    file.seekg(0, std::ios::beg);
+
+    // ... and adjust our internal vector so it has enough size
+    // for the relevant data.
+    this->data.resize(size);
+
+    // Finally, populate the vector with our data.
+    file.read(this->data.data(), size);
+
+    if(!file) {
+        throw std::runtime_error("Could not read from file!");
+    }
+
+}
+
+
+/**
+ * @return The total number of bytes in the file.
+ */
+size_t BinaryFile::size() {
+    return this->data.size();
+}
+
+/**
+ * A pointer to the raw data content of the file.
+ */
+void *BinaryFile::raw_bytes() {
+    return this->data.data();
+}
