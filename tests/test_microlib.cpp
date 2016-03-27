@@ -1,7 +1,7 @@
 /**
  * Tests for the Discharge microlib "standard library" subsection.
  *
- * Copyright (C) Assured Information Security, Inc.
+ * Copyright (C) 2016 Assured Information Security, Inc.
  *      Author: Kyle J. Temkin <temkink@ainfosec.com>
  *
  *  Permission is hereby granted, free of charge, to any person obtaining a 

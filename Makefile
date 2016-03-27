@@ -32,7 +32,8 @@ OBJS = \
 	$(LIBFDT_OBJS)
 
 CFLAGS = \
-  -Iinclude \
+	-Iinclude \
+	-Iinclude/compat \
 	-Ilib/fdt \
 	-march=armv8-a \
 	-mlittle-endian \

@@ -114,7 +114,7 @@ size_t strlen(const char *s)
 /**
  * Determines if two memory regiohns are equal, and returns the difference if they are not.
  */
-size_t memcmp(const void *s1, const void *s2, size_t n)
+int memcmp(const void *s1, const void *s2, size_t n)
 {
     int i;
 

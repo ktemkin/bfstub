@@ -13,7 +13,8 @@ VPATH = .:..:../lib:../lib/fdt
 
 TARGET=test_runner
 TESTS = \
-	test_microlib.o
+	test_microlib.o \
+	test_image.o
 
 # Specify the pieces of discharge that will be used "under test".
 OBJS = \
@@ -26,6 +27,11 @@ OBJS = \
 
 COMMON_FLAGS = \
 	-D__RUNNING_ON_OS__ \
+	-D__USE_SYSTEM_HEADERS__ \
+	-Iinclude \
+	-I../include \
+	-Ilib/fdt \
+	-I../lib/fdt \
 	-I.. \
 	-fno-stack-protector \
 	-fno-common \
@@ -35,15 +41,10 @@ COMMON_FLAGS = \
 
 CFLAGS = \
 	$(COMMON_FLAGS) \
-	-Iinclude \
-	-I../include \
-	-Ilib/fdt \
-	-I../lib/fdt \
 	-std=gnu99 \
 	-ffreestanding \
 
 CXXFLAGS = \
-	-D__USE_SYSTEM_HEADERS__ \
 	$(COMMON_FLAGS)
 
 LDFLAGS =
@@ -53,7 +54,7 @@ all: run_tests
 run_tests: $(TARGET)
 	./test_runner
 
-$(TARGET): $(TARGET).o $(TESTS) $(OBJS)
+$(TARGET): $(TARGET).o $(OBJS) $(TESTS)
 	$(CXX) $(CXXFLAGS) $^ -o $@
 
 %.o: %.S
