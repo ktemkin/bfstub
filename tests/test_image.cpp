@@ -186,7 +186,7 @@ SCENARIO("using load_image_component to load a FIT component", "[load_image_comp
 
 
 BinaryFile mock_source_fdt(test_fdt);
-static char mock_load_target_fdt_case[1024 * 128];
+static char mock_load_target_fdt_case[1024 * 256];
 
 /**
  * Mock version of the get_subcomponent_information function that enables
