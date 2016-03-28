@@ -50,7 +50,7 @@ CXXFLAGS = \
 
 LDFLAGS =
 
-all: run_tests
+all: $(TARGET)
 
 run_tests: $(TARGET)
 	./test_runner

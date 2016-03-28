@@ -40,7 +40,14 @@ class BinaryFile {
        *
        * @param path The path to the file to be opened.
        */
-      BinaryFile(const char * path);
+      BinaryFile(const char *path);
+
+      /**
+       * Creates a new BinaryFile object, and awaits
+       * later initialization (e.g. by an inheriting class.)
+       */
+      BinaryFile();
+
 
       /**
        * @return The total number of bytes in the file.
@@ -58,6 +65,69 @@ class BinaryFile {
       operator void*();
       operator char*();
 
-  private:
+  protected:
       std::vector<char> data;
+};
+
+
+/**
+ * Simple helper class for reading Flattened (Device/Image) Tree properties.
+ */
+class FlattenedTree : public BinaryFile {
+
+    public:
+
+      /**
+       * Creates a new DeviceTree by reading the contents
+       * of a local file.
+       *
+       * @param path The path to the file to be read.
+       */
+      FlattenedTree(const char *path);
+
+
+      /**
+       * Creates a new DeviceTree by copying an existing memory
+       * buffer.
+       *
+       * @param fdt A pointer to the existing FDT in memory.
+       */
+      FlattenedTree(const void *fdt);
+
+
+      /**
+       * Reads a string property from the given FDT.
+       *
+       * @param node The node to read the given property from.
+       * @param property The propery to be read.
+       * @param position If provided, this will be considered the index into an
+       *    array of strings; 0 would indicate the firststring, while e.g.
+       *    1 would indicate the second.
+       */
+      std::string read_property_string(const char *node, const char *property, int position = 0);
+
+
+      /**
+       * Reads a uint64 property from the given FDT.
+       *
+       * @param node The node to read the given property from.
+       * @param property The propery to be read.
+       * @param position If provided, this will be considered the index into an
+       *    array of uint64s; 0 would indicate the firststring, while e.g.
+       *    1 would indicate the second.
+       */
+      uint64_t read_property_u64(const char *node, const char *property, int position = 0);
+
+
+    protected:
+
+      /**
+       * Returns a pointer to the given property from within the FDT.
+       *
+       * @param node The node to read the given property from.
+       * @param property The propery to be read.
+       * @return A pointer to the raw data for the property inside the FDT.
+       */
+      const void * find_property_location(const char* node, const char *property);
+
 };

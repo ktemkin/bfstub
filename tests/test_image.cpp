@@ -241,3 +241,45 @@ SCENARIO("using load_image_component to load an FDT", "[load_image_fdt]") {
         }
     }
 }
+
+
+SCENARIO("using update_fdt_for_xen to prepare an FDT to launch Xen", "[update_fdt_for_xen]") {
+    WHEN("a valid FDT is provided") {
+        FlattenedTree fdt(test_fdt);
+
+        // Specify a mock address for our base kernel.
+        // This address must fit within 32b, to properly emulate a Xen-compatible
+        // load address.
+        const void *mock_kernel_address = (void *)0xAABBCCDD;
+        const int mock_kernel_size = 1234;
+
+        int rc = update_fdt_for_xen(fdt.raw_bytes(), mock_kernel_address, mock_kernel_size);
+
+        THEN("the function should return success") {
+            REQUIRE(rc == SUCCESS);
+        }
+        THEN("the resultant device tree should contain a kernel section") {
+            // Throws an execption if the kernel section doesn't exist.
+            fdt.read_property_string("/module@0", "compatible");
+        }
+        THEN("the resultant kernel section should be marked as a multiboot kernel") {
+            bool has_kernel_mark =
+              (fdt.read_property_string("/module@0", "compatible") == "multiboot,kernel") ||
+              (fdt.read_property_string("/module@0", "compatible", 1) == "multiboot,kernel");
+            REQUIRE(has_kernel_mark);
+        }
+        THEN("the resultant kernel section should be marked as a multiboot module") {
+            bool has_module_mark =
+              (fdt.read_property_string("/module@0", "compatible") == "multiboot,module") ||
+              (fdt.read_property_string("/module@0", "compatible", 1) == "multiboot,module");
+            REQUIRE(has_module_mark);
+        }
+        THEN("the resultant kernel section should contain a correct load address") {
+            REQUIRE(fdt.read_property_u64("/module@0", "reg") == 0xAABBCCDD);
+        }
+        THEN("the resultant kernel section should contain a correct kernel size") {
+            REQUIRE(fdt.read_property_u64("/module@0", "reg", 1) == 1234);
+        }
+
+    }
+}
