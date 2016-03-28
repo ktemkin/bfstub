@@ -69,4 +69,7 @@ $(TARGET).elf: $(OBJS)
 clean:
 	rm -f *.o $(TARGET) $(TARGET).bin $(TARGET).elf $(TARGET).fit
 
-.PHONY: all clean
+test:
+	make -C tests run_tests
+
+.PHONY: all clean test
