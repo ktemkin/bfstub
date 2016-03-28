@@ -41,7 +41,29 @@ int ensure_image_is_accessible(const void *image);
 
 
 /**
- * Loads an subimage componen tinto its final execution location, and returns a
+ * Fetches the information necessary to load a subcomponent into memory,
+ * querying the properites from the provided FIT image.
+ *
+ * @param image The image from which components are to be loaded.
+ * @param path The string path to the component of the FIT image, e.g.
+ *    "/images/kernel@0"
+ * @param out_load_location Out argument; receives a pointer to the physical
+ *    address to which the subcomponent wants to be loaded.
+ * @param out_data_location Out argument; receives a pointer to the physical
+ *    address at which the data to be loaded is currently resident.
+ * @param out_size Out argument; receives the size of the subcomponent.
+ * @param node_offset Optional out argument. If non-null, receives the location
+ *    of the node that describes the given subcomponent, for furhter processing.
+ *
+ * @return SUCCESS on success, or an error code on failure.
+ */
+int get_subcomponent_information(const void *image, const char *path,
+    void **out_load_location, void const**out_data_location, int *out_size,
+    int * node_offset);
+
+
+/**
+ * Loads an subimage component into its final execution location, and returns a
  * pointer to the completed binary. Performs only basic sanity checking.
  *
  * @param image The image from which the blob should be extracted.
@@ -78,5 +100,15 @@ int update_fdt_for_xen(void *fdt, const void *linux_kernel, const int size);
  * @return The address of the component, or NULL on error.
  */
 void * load_image_fdt(const void *image, const char *path);
+
+
+/**
+ * Small convenience function that reads the desired amount of extra space
+ * for a loaded FDT, given a pointer to the property that describes it.
+ *
+ * This helper exists to simplify testing; as this method can be easily
+ * mocked, where a dereference can't easily be omitted.
+ */
+int __read_extra_space_from_fdt(const uint32_t *extra_space_location);
 
 #endif

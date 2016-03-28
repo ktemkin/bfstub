@@ -32,7 +32,8 @@ OBJS = \
 	$(LIBFDT_OBJS)
 
 CFLAGS = \
-  -Iinclude \
+	-Iinclude \
+	-Iinclude/compat \
 	-Ilib/fdt \
 	-march=armv8-a \
 	-mlittle-endian \
@@ -68,4 +69,7 @@ $(TARGET).elf: $(OBJS)
 clean:
 	rm -f *.o $(TARGET) $(TARGET).bin $(TARGET).elf $(TARGET).fit
 
-.PHONY: all clean
+test:
+	make -C tests run_tests
+
+.PHONY: all clean test

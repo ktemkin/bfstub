@@ -45,33 +45,19 @@ void * memcpy(void * dest, const void * src, size_t n)
     return dest;
 }
 
-//void * memcpy(void * dest, const void * src, size_t n)
-//{
-//    // Call our optimized memcpy.
-//    asm volatile(
-//        "mov x0, %0\n\t"
-//        "mov x1, %1\n\t"
-//        "mov x2, %2\n\t"
-//        "bl _memcpy"
-//        :: "r" (dest), "r" (src), "r" (n) 
-//        : "x0", "x1", "x2", "x3", "x4", "x5", "x6", "x7", "x8", "x9",
-//          "x10", "x11", "x12", "x13", "x14", "cc", "x30", "memory"
-//    );
-//    return dest;
-//}
-
+#ifndef __RUNNING_ON_OS__
 
 /**
  * Prints a single character (synchronously) via serial.
  *
  * @param c The character to be printed
  */
-void putc(char c)
+void putc(char c, void *stream)
 {
     // If we're about to send a newline, prefix it with a carriage return.
     // This makes our putc behave like a normal console putc.
     if(c == '\n')
-        putc('\r');
+        putc('\r', stream);
 
     asm volatile(
           "mov x0, %0\n\t"
@@ -80,17 +66,21 @@ void putc(char c)
     );
 }
 
+#endif
+
 /**
  * Prints a string (synchronously) via serial.
  *
  * @param s The string to be printed; must be null terminated.
  */
-void puts(char * s)
+extern int puts(const char * s)
 {
     while(*s) {
-        putc(*s);
+        putc(*s, stdin);
         ++s;
     }
+
+    return 0;
 }
 
 
@@ -124,7 +114,7 @@ size_t strlen(const char *s)
 /**
  * Determines if two memory regiohns are equal, and returns the difference if they are not.
  */
-size_t memcmp(const void *s1, const void *s2, size_t n)
+int memcmp(const void *s1, const void *s2, size_t n)
 {
     int i;
 
@@ -168,6 +158,8 @@ void * memset(void *b, int c, size_t len)
 }
 
 
+#ifndef __RUNNING_ON_OS__
+
 /**
  * Clear out the system's bss.
  */
@@ -180,3 +172,5 @@ void _clear_bss(void)
 
     memset(&lds_bss_start, 0, &lds_bss_end - &lds_bss_start);
 }
+
+#endif

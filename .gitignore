@@ -2,3 +2,4 @@
 *.elf
 *.fit
 *.bin
+run.sh

@@ -586,7 +586,7 @@ int printf(const char *fmt, ...)
   p=buf;
 
   while (*p) {
-    putc(*p);
+    putc(*p, stdin);
     n++;
     p++;
   }

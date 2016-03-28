@@ -41,7 +41,7 @@
             arch = "arm64";
             os = "linux";
             compression = "none";
-            load = <0x80320000>;
+            load = <0x80350000>;
 
             hash@1 {
                 algo = "sha1";
