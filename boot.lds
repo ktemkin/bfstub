@@ -44,11 +44,11 @@ SECTIONS
 
 	/* Uninitialised data */
 	. = ALIGN(8);
-	lds_bss_start = .;
+	PROVIDE(lds_bss_start = .);
 	.bss (NOLOAD) : {
 		*(.bss) . = ALIGN(8);
 	}
-	lds_bss_end = .;
+	PROVIDE(lds_bss_end = .);
 
   . = ALIGN(16);
   . += 0x10000; /* 64 KiB stack */

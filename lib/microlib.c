@@ -173,6 +173,10 @@ void * memset(void *b, int c, size_t len)
  */
 void _clear_bss(void)
 {
-    extern void *lds_bss_start, *lds_bss_end;
-    memset(lds_bss_start, 0, lds_bss_end - lds_bss_start);
+    // These symbols don't actually have a meaningful type-- instead,
+    // we care about the locations at which the linker /placed/ these
+    // symbols, which happen to be at the start and end of the BSS.
+    extern int lds_bss_start, lds_bss_end;
+
+    memset(&lds_bss_start, 0, &lds_bss_end - &lds_bss_start);
 }

@@ -118,8 +118,14 @@ const void * find_fit_subimage(void *fdt)
     // Find the location of the initrd property, which holds our subimage...
     subimage_location = fdt_getprop(fdt, chosen_node, "linux,initrd-start", &subimage_location_size);
     if(subimage_location_size <= 0) {
-        printf("ERROR: Could not find the subimage node! (%d)", subimage_location_size);
-        return NULL;
+
+        // In rarer cases (e.g. if we're launched by something other than discharge for debug),
+        // we may want to use the main FDT instead of a subimage. To allow this, fail gracefully
+        // by passing on the main image. If we /were/ loaded by discharge, we'll immediately fail
+        // to find the Xen image, and shut down gracefully anyawy.
+        printf("\n! WARNING: Couldn't find a subimage node.\n");
+        printf("!          Attempting to boot using main image.\n");
+        return fdt;
     }
 
     // If we've found a subimage, print out its information.
