@@ -88,6 +88,18 @@ int update_fdt_for_xen(void *fdt, const void *linux_kernel, const int size);
 
 
 /**
+ * Adjust the target FDT's memory to match the memory regions provided by the bootloader.
+ * This accounts for any memory set aside by the bootloader, e.g. for the secure world.
+ * See the caveat in update_fdt_for_xen.
+ *
+ * @param fdt The FDT to be updated.
+ *
+ * @return SUCCESS, or an error code on failure
+ */
+int update_fdt_memory(void *target_fdt, void *source_fdt);
+
+
+/**
  * Loads an subimage device tree into its final execution location, and returns
  * a pointer to the completed binary. Similar to load_image_component, but uses
  * FDT unpacking methods to create a new FDT in the target location, allowing

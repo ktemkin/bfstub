@@ -202,6 +202,14 @@ void main(void * fdt, uint32_t el)
     if(rc != SUCCESS)
       panic("Could not populate device tree with the dom0 location!");
 
+    // Finally, we'll copy over the contents of our memory node, copying the bootloader-adjusted
+    // scope of the system memory. It's important that we get this right, as the system can carve
+    // out regions during startup (e.g. for the Secure World), and if we don't respect this, we'll
+    // wind up with unwriteable memory and/or with memory that's trashed by other systems.
+    rc = update_fdt_memory(target_fdt, fdt);
+    if(rc != SUCCESS)
+        panic("Could not update the new FDT with updated memory ranges!");
+
     // Finally, boot into the Xen kernel.
     launch_kernel(xen_kernel, target_fdt);
 

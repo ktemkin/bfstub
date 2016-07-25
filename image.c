@@ -328,6 +328,70 @@ void * load_image_fdt(const void *image, const char *path)
 
 
 /**
+ * Adjust the target FDT's memory to match the memory regions provided by the bootloader.
+ * This accounts for any memory set aside by the bootloader, e.g. for the secure world.
+ * See the caveat in update_fdt_for_xen.
+ *
+ * @param fdt The FDT to be updated.
+ *
+ * @return SUCCESS, or an error code on failure
+ */
+int update_fdt_memory(void *target_fdt, void *source_fdt)
+{
+    const struct fdt_property *source_reg;
+
+    int target_memory_node, source_memory_node, rc;
+    int root_node = find_node(target_fdt, "/");
+
+    // Ensure that we /have/ a root node.
+    if(root_node < 0) {
+        printf("ERROR: Could not find the required root node in the target FDT (%s)!\n", fdt_strerror(root_node));
+        return root_node;
+    }
+
+    // Create a memory node in the target FDT.
+    target_memory_node = fdt_add_subnode(target_fdt, root_node, "memory");
+
+    // If the node already exists, we'll use it in-place.
+    if(target_memory_node == -FDT_ERR_EXISTS) {
+      target_memory_node = find_node(target_fdt, "/memory");
+    }
+
+    // If we weren't able to resolve the memory node, fail out.
+    if(target_memory_node < 0) {
+        printf("ERROR: Could not add the memory subnode to the target FDT (%s)!\n", fdt_strerror(target_memory_node));
+        return target_memory_node;
+    }
+
+    // Find the memory node in the source FDT-- this contains the source memory information.
+    source_memory_node = fdt_path_offset(source_fdt, "/memory");
+    if(source_memory_node < 0) {
+        printf("ERROR: Could not retreive memory topology from the bootloader! (%s)!\n", fdt_strerror(source_memory_node));
+        return source_memory_node;
+    }
+
+    // Retreive the property that contains the bootloader-provided memory topology.
+    source_reg = fdt_get_property(source_fdt, source_memory_node, "reg", NULL);
+    if(!source_reg)
+    {
+        printf("ERROR: Could not process the bootloader-provided memory topology!\n");
+        return -FDT_ERR_BADVALUE;
+    }
+
+    // Copy the memory topology over to the target FDT. For now, we assume the cell sizes
+    // (address and size) match the target, as discharge does.
+    rc = fdt_setprop(target_fdt, target_memory_node, "reg", source_reg->data, fdt32_to_cpu(source_reg->len));
+    if(rc != SUCCESS)
+    {
+        printf("ERROR: Could not update the target memory topology (%s)!\n", fdt_strerror(rc));
+        return rc;
+    }
+
+    return SUCCESS;
+}
+
+
+/**
  * Updates the provided FDT to contain information as to the in-memory location
  * of the linux kernel to be used dom0.
  *
@@ -343,8 +407,7 @@ int update_fdt_for_xen(void *fdt, const void *linux_kernel, const int size)
     int module_node, rc;
     int root_node = find_node(fdt, "/");
 
-    // Ensure that we /have/ a chosen node. If we don't, it's likely not worth
-    // creating one, as things like the Xen boot arguments will be missing.
+    // If we couldn't find the root node, something's horribly wrong.
     if(root_node < 0) {
         printf("ERROR: Could not find the required root node in the target FDT (%d)!\n", root_node);
         return root_node;
