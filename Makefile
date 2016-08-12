@@ -56,6 +56,7 @@ LDFLAGS =
 
 $(TARGET).fit: $(TARGET).bin $(TARGET).its $(SUBIMAGE).fit
 	dtc -I dts -O dtb $(TARGET).its > $(TARGET).fit
+	mkimage -f $(TARGET).its $(TARGET).fit
 
 $(SUBIMAGE).fit: subimage/$(SUBIMAGE).its $(SUBIMAGE_COMPONENTS)
 	cd subimage; dtc -p $(SUBIMAGE_PADDING) -I dts -O dtb $(SUBIMAGE).its > ../$(SUBIMAGE).fit; cd ..

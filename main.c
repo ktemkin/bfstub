@@ -206,9 +206,14 @@ void main(void * fdt, uint32_t el)
     // scope of the system memory. It's important that we get this right, as the system can carve
     // out regions during startup (e.g. for the Secure World), and if we don't respect this, we'll
     // wind up with unwriteable memory and/or with memory that's trashed by other systems.
-    rc = update_fdt_memory(target_fdt, fdt);
-    if(rc != SUCCESS)
-        panic("Could not update the new FDT with updated memory ranges!");
+    // (For now, we skip this if we weren't launch using a FIT launcher; this maintains consistent
+    // behavior when testing this from u-boot using extlinux/bootu. This may change in the future.)
+    if(fdt != fit_image) {
+      rc = update_fdt_memory(target_fdt, fdt);
+
+      if(rc != SUCCESS)
+          panic("Could not update the new FDT with updated memory ranges!");
+    }
 
     // Finally, boot into the Xen kernel.
     launch_kernel(xen_kernel, target_fdt);
