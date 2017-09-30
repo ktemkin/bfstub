@@ -2,7 +2,7 @@
  * Cache management helpers for Discharge
  *
  * Copyright (C) Assured Information Security, Inc.
- *      Author: Kyle J. Temkin <temkink@ainfosec.com>
+ *      Author: ktemkin <temkink@ainfosec.com>
  *
  * Portions from Coreboot:
  *      Copyright 2014 Google Inc.

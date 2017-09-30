@@ -2,7 +2,7 @@
  * Cache management helpers for Discharge
  *
  * Copyright (C) Assured Information Security, Inc.
- *      Author: Kyle J. Temkin <temkink@ainfosec.com>
+ *      Author: ktemkin <temkink@ainfosec.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),

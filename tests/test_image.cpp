@@ -2,7 +2,7 @@
  * Tests for the image-loading components of 
  *
  * Copyright (C) 2016 Assured Information Security, Inc.
- *      Author: Kyle J. Temkin <temkink@ainfosec.com>
+ *      Author: ktemkin <temkink@ainfosec.com>
  *
  *  Permission is hereby granted, free of charge, to any person obtaining a 
  *  copy of this software and associated documentation files (the "Software"), 
