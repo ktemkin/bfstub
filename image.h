@@ -80,11 +80,17 @@ void * load_image_component(const void *image, const char * path, int * size);
  * of the linux kernel to be used dom0.
  *
  * @param fdt The target device tree to be updated.
- * @param linux_kernel The address at which the linux kernel resides in memory.
+ * @param module The address at which the releavant module resides in memory.
  *    Should be below 4GiB, as this is what Xen accepts.
+ * @param compatible The module string, which describes the string that will be
+ *    added to Xen. Usually in the format "multiboot,<type>", where type
+ *    is e.g. 'kernel'.
  * @param size The size of the linux kernel, in bytes.
+ *
+ * @return SUCCESS on SUCCESS, or an error code on failure.
  */
-int update_fdt_for_xen(void *fdt, const void *linux_kernel, const int size);
+int update_fdt_for_xen(void *fdt, const void *module, const int size,
+    const char *compatible, const char *module_node_name);
 
 
 /**

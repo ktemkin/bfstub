@@ -34,6 +34,9 @@
 
 static const int SUCCESS = 0;
 
+static const int true = 1;
+static const int false = 0;
+
 /**
  * Most of the time, we'll run baremetal without any standard library
  * underneath us, so we'll want to declare some basic functions consumed

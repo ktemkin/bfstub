@@ -105,7 +105,7 @@ const void * find_fit_subimage(void *fdt)
     // Unfortunately, image locations received in the FDT are stored as 32-bit
     // integers for backwards compatibility. We'll have to expand this out
     // to a full 64-bit image ourselves.
-    const uint32_t const * subimage_location;
+    const uint32_t *subimage_location;
     const char * subimage;
 
     // Find the node that describes our main payload.
@@ -168,7 +168,7 @@ int get_subcomponent_information(const void *image, const char *path,
     void **out_load_location, void const**out_data_location, int *out_size,
     int * node_offset)
 {
-    const uint32_t const *load_information_location;
+    const uint32_t *load_information_location;
     const void *data_location;
     void *load_location;
 
@@ -396,13 +396,17 @@ int update_fdt_memory(void *target_fdt, void *source_fdt)
  * of the linux kernel to be used dom0.
  *
  * @param fdt The target device tree to be updated.
- * @param linux_kernel The address at which the linux kernel resides in memory.
+ * @param module The address at which the releavant module resides in memory.
  *    Should be below 4GiB, as this is what Xen accepts.
+ * @param compatible The module string, which describes the string that will be
+ *    added to Xen. Usually in the format "multiboot,<type>", where type
+ *    is e.g. 'kernel'.
  * @param size The size of the linux kernel, in bytes.
  * 
  * @return SUCCESS on SUCCESS, or an error code on failure.
  */
-int update_fdt_for_xen(void *fdt, const void *linux_kernel, const int size)
+int update_fdt_for_xen(void *fdt, const void *module, const int size,
+    const char *compatible, const char *module_node_name)
 {
     int module_node, rc;
     int root_node = find_node(fdt, "/");
@@ -413,46 +417,47 @@ int update_fdt_for_xen(void *fdt, const void *linux_kernel, const int size)
         return root_node;
     }
 
-    // Create a module node for Xen's representation of the linux kernel.
-    module_node = fdt_add_subnode(fdt, root_node, "module@0");
+    // Create a module node for Xen's representation of the module.
+    // We skip the first character, which should be a leading slash.
+    module_node = fdt_add_subnode(fdt, root_node, &module_node_name[1]);
 
     // If the module already exists, we'll use it in-place.
     if(module_node == -FDT_ERR_EXISTS) {
-      module_node = find_node(fdt, "/module@0");
+      module_node = find_node(fdt, module_node_name);
     }
 
     // If we weren't able to resolve the module node, fail out.
     if(module_node < 0) {
-        printf("ERROR: Could not add the module subnode to the target FDT (%d)!\n", module_node);
+        printf("ERROR: Could not add the %s subnode to the target FDT (%s)!\n", compatible, fdt_strerror(module_node));
         return module_node;
     }
 
-    // Set the new module's compatible to indicate this is the dom0 kernel.
-    rc = fdt_setprop_string(fdt, module_node, "compatible", "multiboot,kernel");
+    // Set the new module's compatible.
+    rc = fdt_setprop_string(fdt, module_node, "compatible", compatible);
     if(rc != SUCCESS) {
-        printf("ERROR: Could not set up the linux kernel node identifier! (%d)\n", rc);
+        printf("ERROR: Could not set up the %s node identifier! (%d)\n", compatible, rc);
         return rc;
     }
 
 
-    // Set the new module's compatible to indicate this is the dom0 kernel.
+    // And indicate that this is a module.
     rc = fdt_appendprop_string(fdt, module_node, "compatible", "multiboot,module");
     if(rc != SUCCESS) {
-        printf("ERROR: Could not set up the linux kernel node identifier! (%d)\n", rc);
+        printf("ERROR: Could not set up the %s node identifier! (%d)\n", compatible, rc);
         return rc;
     }
 
     // Add the kernel's location...
-    rc = fdt_setprop_u64(fdt, module_node, "reg", (uint64_t)linux_kernel);
+    rc = fdt_setprop_u64(fdt, module_node, "reg", (uint64_t)module);
     if(rc != SUCCESS) {
-        printf("ERROR: Could not add the linux kernel's location to the node! (%d)\n", rc);
+        printf("ERROR: Could not add a %s module's location to the node! (%d)\n", compatible, rc);
         return rc;
     }
 
     // ... and add its size.
     rc = fdt_appendprop_u64(fdt, module_node, "reg", (uint64_t)size);
     if(rc != SUCCESS) {
-        printf("ERROR: Could not add the linux kernel's size to the node! (%d)\n", rc);
+        printf("ERROR: Could not add the %s module's size to the node! (%d)\n", compatible, rc);
         return rc;
     }
 

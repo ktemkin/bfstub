@@ -48,6 +48,20 @@
             };
         };
 
+        ramdisk@1 {
+            description = "dom0 ramdisk";
+            data = /incbin/("initrd");
+            type = "ramdisk";
+            arch = "arm64";
+
+            compression = "none";
+            load = <0x81350000>;
+
+            hash@1 {
+                algo = "sha1";
+            };
+        };
+
 
     };
 
