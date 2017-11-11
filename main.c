@@ -25,7 +25,7 @@
 
 
 
-#include <inttypes.h>
+#include <stdint.h>
 #include <microlib.h>
 
 #include <libfdt.h>
