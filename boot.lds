@@ -9,7 +9,7 @@ SECTIONS
 	. = ALIGN(4);
 	.text : {
     PROVIDE(bfstub_start = .);
-		start.o	(.text)
+		entry.o	(.text)
 		*(.text)
 	}
 

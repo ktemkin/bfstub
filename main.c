@@ -16,8 +16,13 @@
 
 #include "image.h"
 
-
+/**
+ * Switches to EL1, and then calls main_el1.
+ * Implemented in assembly in entry.S.
+ */
 void switch_to_el1(void * fdt);
+
+
 void main_el1(void * fdt, uint32_t el);
 
 /**
@@ -25,7 +30,6 @@ void main_el1(void * fdt, uint32_t el);
  */
 void intro(uint32_t el)
 {
-
     printf("_______ _     _ _     _ __   _ ______  _______  ______        _______ __   _ _______\n");
     printf("   |    |_____| |     | | \\  | |     \\ |______ |_____/ |      |_____| | \\  | |______\n");
     printf("   |    |     | |_____| |  \\_| |_____/ |______ |    \\_ |_____ |     | |  \\_| |______\n");
@@ -153,12 +157,12 @@ int find_image_verbosely(void *fdt, const char *path, const char *description,
     return SUCCESS;
 }
 
+
 /**
  * Core section of the Bareflank stub-- sets up the hypervisor from up in EL2.
  */
 void main(void *fdt, uint32_t el)
 {
-
     // Print our intro text...
     intro(el);
 
@@ -168,11 +172,22 @@ void main(void *fdt, uint32_t el)
     }
 
     // TODO:
-    // - Set up the hypercall table so we can return to EL2.
-    // - LIKELY: Set up the second-level page table to isolate out the EL2 memory.
-    // - Set up the EL1 stack and enough state so we can pop down to EL1.
+    // Insert any setup you want done in EL2, here. For now, EL2 is set up
+    // to do almost nothing-- it doesn't take control of any hardware,
+    // and it hasn't set up any trap-to-hypervisor features.
+    //
+    // If you don't trust EL1 (e.g. in an Aeries model rather than a normal
+    // Bareflank model), you might want to set up second-level page translation
+    // here, and isolate this memory. (You'd create a second copy of this memory
+    // space for EL1 to continue executing from, and then map the EL2 version
+    // into the EL2 page table and the EL1 version into the EL1 page table.
+    // You'd then let the kernel reclaim the EL1 version when it starts.)
+    //
+    // Our EL2 vector table was set up before we jumped into main(), and
+    // that provides a way back up from EL1 to EL2.
 
-    // - Switch down to EL1.
+
+    // Switch down to EL1.
     printf("\nSwitching to EL1...\n");
     switch_to_el1(fdt);
 }
@@ -185,7 +200,6 @@ void main(void *fdt, uint32_t el)
 void main_el1(void * fdt, uint32_t el)
 {
     int rc;
-
     void * kernel_location;
 
     // Validate that we're in EL1.
@@ -205,10 +219,15 @@ void main_el1(void * fdt, uint32_t el)
 
     // TODO:
     // - Patch the FDT's memory nodes and remove the memory we're using.
+    //   (This is necessary if we're not isolating ourself from EL1, and _not_
+    //    necessary if we set up second-level page translation. If we set up
+    //    second-level page translation, we'd need to synthesize a new FDT
+    //    memory descripton that matches the guest-physical address space.)
+    //
     // - Patch the FDT to remove the nodes we're consuming (e.g. kernel location)
     //   and to pass in e.g. the ramdisk in the place where it should be.
 
-    // - Launch our next-stage (e.g. Linux) kernel.
+    // Launch our next-stage (e.g. Linux) kernel.
     launch_kernel(kernel_location, fdt);
 
     // If we've made it here, we failed to boot, and we can't recover.

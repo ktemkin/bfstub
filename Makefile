@@ -13,8 +13,9 @@ VPATH = .:lib:lib/fdt
 # Build the discharge binary.
 TARGET = bfstub
 OBJS = \
-	start.o \
+	entry.o \
 	main.o \
+	exceptions.o \
 	microlib.o \
 	printf.o \
 	memmove.o \
