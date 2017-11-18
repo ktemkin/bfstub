@@ -11,7 +11,7 @@ include lib/fdt/Makefile.libfdt
 VPATH = .:lib:lib/fdt
 
 # Build the discharge binary.
-TARGET = discharge
+TARGET = bfstub
 OBJS = \
 	start.o \
 	main.o \
