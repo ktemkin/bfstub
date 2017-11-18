@@ -1,33 +1,14 @@
-/*
- * Andrei Warkentin (C) 2014 <andrey.warkentin@gmail.com>
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
- */
-
 OUTPUT_FORMAT("elf64-littleaarch64")
 OUTPUT_ARCH(aarch64)
 ENTRY(_header)
 SECTIONS
 {
-  /* start the the beginning our relocated block, where DepthCharge will place us */
-  . = 0x80000000;
+  /* start the the beginning our relocated block, where Discharge will place us */
+  . = 0x80100000;
 
 	. = ALIGN(4);
 	.text : {
-    PROVIDE(discharge_start = .);
+    PROVIDE(bfstub_start = .);
 		start.o	(.text)
 		*(.text)
 	}
@@ -50,10 +31,18 @@ SECTIONS
 	}
 	PROVIDE(lds_bss_end = .);
 
+  /* EL2 stack */
   . = ALIGN(16);
   . += 0x10000; /* 64 KiB stack */
-  stack_end = .;
-  discharge_end = .;
+  el2_stack_end = .;
+
+
+  /* EL1 stack */
+  . = ALIGN(16);
+  . += 0x10000; /* 64 KiB stack */
+  el1_stack_end = .;
+
+  bfstub_end = .;
 
 	/DISCARD/ : { *(.dynstr*) }
 	/DISCARD/ : { *(.dynamic*) }

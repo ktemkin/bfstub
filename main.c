@@ -16,6 +16,10 @@
 
 #include "image.h"
 
+
+void switch_to_el1(void * fdt);
+void main_el1(void * fdt, uint32_t el);
+
 /**
  * Print our intro message
  */
@@ -80,13 +84,22 @@ void load_device_tree(void *fdt)
  */
 void launch_kernel(const void *kernel, const void *fdt)
 {
+    const uint32_t *kernel_raw = kernel;
+
     // Construct a function pointer to our kernel, which will allow us to
     // jump there immediately. Note that we don't care what this leaves on
     // the stack, as either our entire stack will be ignored, or it'll
     // be torn down by the target kernel anyways.
     void (*target_kernel)(const void *fdt) = kernel;
 
-    printf("\n Launching hardware domain kernel...\n");
+    // Validate that we seem to have a valid kernel image, and warn if
+    // we don't.
+    if(kernel_raw[14] != 0x644d5241) {
+        printf("! WARNING: Kernel image has invalid magic (0x%x)\n", kernel_raw);
+        printf("!          Attempting to boot anyways.\n");
+    }
+
+    printf("\nLaunching hardware domain kernel...\n");
     target_kernel(fdt);
 }
 
@@ -140,12 +153,11 @@ int find_image_verbosely(void *fdt, const char *path, const char *description,
     return SUCCESS;
 }
 
-
+/**
+ * Core section of the Bareflank stub-- sets up the hypervisor from up in EL2.
+ */
 void main(void *fdt, uint32_t el)
 {
-    int rc;
-
-    void * kernel_location;
 
     // Print our intro text...
     intro(el);
@@ -155,22 +167,43 @@ void main(void *fdt, uint32_t el)
         panic("The bareflank stub must be launched from EL2!");
     }
 
-    // Tasks we have to do:
+    // TODO:
     // - Set up the hypercall table so we can return to EL2.
     // - LIKELY: Set up the second-level page table to isolate out the EL2 memory.
     // - Set up the EL1 stack and enough state so we can pop down to EL1.
-    // - Switch down to EL1.
 
-    // - Load the device tree.
+    // - Switch down to EL1.
+    printf("\nSwitching to EL1...\n");
+    switch_to_el1(fdt);
+}
+
+
+/**
+ * Secondary section of the Bareflank stub, executed once we've surrendered
+ * hypervisor privileges.
+ */
+void main_el1(void * fdt, uint32_t el)
+{
+    int rc;
+
+    void * kernel_location;
+
+    // Validate that we're in EL1.
+    printf("Now executing from EL%d!\n", el);
+    if(el != 1) {
+        panic("Executing with more privilege than we expect!");
+    }
+
+    // Load the device tree.
     load_device_tree(fdt);
 
-    // - Find the kernel / ramdisk / etc. in the FDT we were passed.
+    // Find the kernel / ramdisk / etc. in the FDT we were passed.
     rc = find_image_verbosely(fdt, "/module@0", "kernel", &kernel_location, NULL);
     if (rc) {
         panic("Could not find a kernel to launch!");
     }
 
-
+    // TODO:
     // - Patch the FDT's memory nodes and remove the memory we're using.
     // - Patch the FDT to remove the nodes we're consuming (e.g. kernel location)
     //   and to pass in e.g. the ramdisk in the place where it should be.
@@ -180,4 +213,5 @@ void main(void *fdt, uint32_t el)
 
     // If we've made it here, we failed to boot, and we can't recover.
     panic("The Bareflank stub terminated without transferring control to the first domain!");
+
 }
