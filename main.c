@@ -15,6 +15,7 @@
 #include <cache.h>
 
 #include "image.h"
+#include "regs.h"
 
 /**
  * Switches to EL1, and then calls main_el1.
@@ -22,8 +23,17 @@
  */
 void switch_to_el1(void * fdt);
 
+/**
+ * C entry point for execution at EL1.
+ */
+void main_el1(void * fdt);
 
-void main_el1(void * fdt, uint32_t el);
+/**
+ * Reference to the EL2 vector table.
+ * Note that the type here isn't reprsentative-- we just need the address of the label.
+ */
+extern uint64_t el2_vector_table;
+
 
 /**
  * Print our intro message
@@ -161,8 +171,11 @@ int find_image_verbosely(void *fdt, const char *path, const char *description,
 /**
  * Core section of the Bareflank stub-- sets up the hypervisor from up in EL2.
  */
-void main(void *fdt, uint32_t el)
+void main(void *fdt)
 {
+    // Read the currrent execution level...
+    uint32_t el = get_current_el();
+
     // Print our intro text...
     intro(el);
 
@@ -170,6 +183,10 @@ void main(void *fdt, uint32_t el)
     if (el != 2) {
         panic("The bareflank stub must be launched from EL2!");
     }
+
+    // Set up the vector table for EL2, so that the HVC instruction can be used
+    // from EL1. This allows us to return to EL2 after starting the EL1 guest.
+    set_vbar_el2(&el2_vector_table);
 
     // TODO:
     // Insert any setup you want done in EL2, here. For now, EL2 is set up
@@ -197,10 +214,13 @@ void main(void *fdt, uint32_t el)
  * Secondary section of the Bareflank stub, executed once we've surrendered
  * hypervisor privileges.
  */
-void main_el1(void * fdt, uint32_t el)
+void main_el1(void * fdt)
 {
     int rc;
     void * kernel_location;
+
+    // Read the currrent execution level...
+    uint32_t el = get_current_el();
 
     // Validate that we're in EL1.
     printf("Now executing from EL%d!\n", el);

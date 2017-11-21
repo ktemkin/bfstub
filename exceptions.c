@@ -17,7 +17,7 @@
 /**
  * Simple debug function that prints all of our saved registers.
  */
-static void print_registers(struct el1_registers *regs)
+static void print_registers(struct guest_state *regs)
 {
     // print x0-29
     for(int i = 0; i < 30; i += 2) {
@@ -41,7 +41,7 @@ static void print_registers(struct el1_registers *regs)
  * Placeholder function that triggers whenever a vector happens we're not
  * expecting. Currently prints out some debug information.
  */
-void unhandled_vector(struct el1_registers *regs)
+void unhandled_vector(struct guest_state *regs)
 {
     printf("\nAn unexpected vector happened!\n");
     print_registers(regs);
@@ -54,7 +54,7 @@ void unhandled_vector(struct el1_registers *regs)
  * so that's all we're going to handle here.
  */
 
-void handle_hypercall(struct el1_registers *regs)
+void handle_hypercall(struct guest_state *regs)
 {
     // This is demonstration code.
     // In the future, you'd stick your hypercall table here for the minimial

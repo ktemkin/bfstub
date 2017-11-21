@@ -159,7 +159,7 @@ union esr {
 /**
  * Structure that stores the saved register values on a hypercall.
  */
-struct el1_registers {
+struct guest_state {
     uint64_t elr_el1;
     uint64_t spsr_el1;
 

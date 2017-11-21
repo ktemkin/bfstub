@@ -14,6 +14,7 @@ VPATH = .:lib:lib/fdt
 TARGET = bfstub
 OBJS = \
 	entry.o \
+	uart_tegra.o \
 	main.o \
 	exceptions.o \
 	microlib.o \
