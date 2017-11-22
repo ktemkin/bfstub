@@ -48,6 +48,7 @@ void intro(uint32_t el)
     printf("\n\nInitializing Bareflank stub...\n");
     printf("  current execution level:               EL%u\n", el);
     printf("  hypervisor applications supported:     %s\n", (el == 2) ? "YES" : "NO");
+    printf("  mmu is:                                %s\n", (get_el2_mmu_status()) ? "ON" : "OFF");
 
 }
 
@@ -211,7 +212,13 @@ void main(void *fdt)
     switch_to_el1(fdt);
 }
 
-int exclude_our_memory_from_fdt(void *fdt)
+/**
+ * Excludes the memory used by EL2 from the 'available memory' list to be passed
+ * to the EL1 kernel. This asks it nicely not to trounce our physical memory. :)
+ *
+ * @param fdt The FDT to be patched.
+ */
+int exclude_el2_memory_from_fdt(void *fdt)
 {
     // These symbols don't actually have a meaningful type-- instead,
     // we care about the locations at which the linker /placed/ these
@@ -256,17 +263,17 @@ void main_el1(void * fdt)
         panic("Could not find a kernel to launch!");
     }
 
-    // TODO:
-    // - Patch the FDT's memory nodes and remove the memory we're using.
-    //   (This is necessary if we're not isolating ourself from EL1, and _not_
-    //    necessary if we set up second-level page translation. If we set up
-    //    second-level page translation, we'd need to synthesize a new FDT
-    //    memory descripton that matches the guest-physical address space.)
-    rc = exclude_our_memory_from_fdt(fdt);
+    // Patch the FDT's memory nodes and remove the memory we're using.
+    //  (This is necessary if we're not isolating ourself from EL1, and _not_
+    //   necessary if we set up second-level page translation. If we set up
+    //   second-level page translation, we'd need to synthesize a new FDT
+    //   memory descripton that matches the guest-physical address space.)
+    rc = exclude_el2_memory_from_fdt(fdt);
     if (rc) {
         panic("Could not exclude our stub's memory from the FDT!");
     }
 
+    // TODO:
     // - Patch the FDT to remove the nodes we're consuming (e.g. kernel location)
     //   and to pass in e.g. the ramdisk in the place where it should be.
 

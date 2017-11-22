@@ -52,4 +52,16 @@ inline static void set_elr_el2(void * address) {
     WRITE_SYSREG_64(elr_el2, (uint64_t)address);
 }
 
+
+/**
+ * Returns the MMU status bit from the SCTLR register.
+ */
+inline static uint32_t get_el2_mmu_status(void) {
+    uint32_t val;
+
+    // Read the CurrentEl register, and extract the bits that tell us our EL.
+    READ_SYSREG_32(sctlr_el2, val);
+    return val & 1;
+}
+
 #endif
