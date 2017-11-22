@@ -37,6 +37,7 @@ static const int SUCCESS = 0;
 static const int true = 1;
 static const int false = 0;
 
+
 /**
  * Most of the time, we'll run baremetal without any standard library
  * underneath us, so we'll want to declare some basic functions consumed
@@ -51,6 +52,19 @@ static const int false = 0;
   // Discharge currently has no reason to support input streams, so we'll
   // ignore these and print everything to the serial log.
   #define stdin 0
+
+
+  /**
+   * Min and max macros.
+   */
+  #define max(a,b) \
+     ({ __typeof__ (a) _a = (a); \
+         __typeof__ (b) _b = (b); \
+       _a > _b ? _a : _b; })
+  #define min(a,b) \
+     ({ __typeof__ (a) _a = (a); \
+         __typeof__ (b) _b = (b); \
+       _a < _b ? _a : _b; })
 
   void * memcpy(void * dest, const void * src, size_t n);
   void * memmove(void *dst0, const void *src0, register size_t length);

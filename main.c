@@ -113,7 +113,7 @@ void launch_kernel(const void *kernel, const void *fdt)
         printf("!          Attempting to boot anyways.\n");
     }
 
-    printf("\nLaunching hardware domain kernel...\n");
+    printf("\n\nLaunching hardware domain kernel...\n");
     target_kernel(fdt);
 }
 
@@ -200,13 +200,31 @@ void main(void *fdt)
     // into the EL2 page table and the EL1 version into the EL1 page table.
     // You'd then let the kernel reclaim the EL1 version when it starts.)
     //
-    // Our EL2 vector table was set up before we jumped into main(), and
-    // that provides a way back up from EL1 to EL2.
+    // Note that this minimal stub doesn't do anything fancy, like enable paging
+    // or caching. If you plan on doing anything _serious_ here, you probably want
+    // to turn those on-- for performance sake, if nothing else.
 
-
-    // Switch down to EL1.
+    // Once we're done with EL2 (for now), switch down to EL1. The EL1 code can
+    // request a service from this EL2 stub by using the 'hvc' instruction, at
+    // which point the EL2 handler in exceptions.c will be invoked.
     printf("\nSwitching to EL1...\n");
     switch_to_el1(fdt);
+}
+
+int exclude_our_memory_from_fdt(void *fdt)
+{
+    // These symbols don't actually have a meaningful type-- instead,
+    // we care about the locations at which the linker /placed/ these
+    // symbols, which happen to be at the start and end of our memory allocation.
+    extern int lds_bfstub_start, lds_el2_bfstub_end;
+
+    // Figure out the span of the stub's memory, including text/data/bss/el2 stack,
+    // but _not_ the EL1 stack, which we expect the target kernel to reclaim.
+    uintptr_t start_addr = (uintptr_t)&lds_bfstub_start;
+    uintptr_t end_addr = (uintptr_t)&lds_el2_bfstub_end;
+
+    // Patch our FDT to exclude the relevant memory address.
+    return update_fdt_to_exclude_memory(fdt, start_addr, end_addr);
 }
 
 
@@ -217,6 +235,7 @@ void main(void *fdt)
 void main_el1(void * fdt)
 {
     int rc;
+    size_t kernel_size;
     void * kernel_location;
 
     // Read the currrent execution level...
@@ -232,7 +251,7 @@ void main_el1(void * fdt)
     load_device_tree(fdt);
 
     // Find the kernel / ramdisk / etc. in the FDT we were passed.
-    rc = find_image_verbosely(fdt, "/module@0", "kernel", &kernel_location, NULL);
+    rc = find_image_verbosely(fdt, "/module@0", "kernel", &kernel_location, &kernel_size);
     if (rc) {
         panic("Could not find a kernel to launch!");
     }
@@ -243,11 +262,16 @@ void main_el1(void * fdt)
     //    necessary if we set up second-level page translation. If we set up
     //    second-level page translation, we'd need to synthesize a new FDT
     //    memory descripton that matches the guest-physical address space.)
-    //
+    rc = exclude_our_memory_from_fdt(fdt);
+    if (rc) {
+        panic("Could not exclude our stub's memory from the FDT!");
+    }
+
     // - Patch the FDT to remove the nodes we're consuming (e.g. kernel location)
     //   and to pass in e.g. the ramdisk in the place where it should be.
 
     // Launch our next-stage (e.g. Linux) kernel.
+    __invalidate_cache_region(kernel_location, kernel_size);
     launch_kernel(kernel_location, fdt);
 
     // If we've made it here, we failed to boot, and we can't recover.

@@ -8,7 +8,7 @@ SECTIONS
 
 	. = ALIGN(4);
 	.text : {
-    PROVIDE(bfstub_start = .);
+    PROVIDE(lds_bfstub_start = .);
 		entry.o	(.text)
 		*(.text)
 	}
@@ -36,13 +36,16 @@ SECTIONS
   . += 0x10000; /* 64 KiB stack */
   el2_stack_end = .;
 
+  /* Page align the end of the bfstub */
+  . = ALIGN(512);
+  PROVIDE(lds_el2_bfstub_end = .);
 
   /* EL1 stack */
   . = ALIGN(16);
   . += 0x10000; /* 64 KiB stack */
   el1_stack_end = .;
 
-  bfstub_end = .;
+  lds_bfstub_end = .;
 
 	/DISCARD/ : { *(.dynstr*) }
 	/DISCARD/ : { *(.dynamic*) }

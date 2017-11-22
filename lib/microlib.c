@@ -27,7 +27,6 @@
 
 #include <microlib.h>
 
-
 /**
  * Quick (and not particularly performant) implementation of the standard
  * library's memcpy.

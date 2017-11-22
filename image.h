@@ -29,6 +29,12 @@
 #include <microlib.h>
 #include <libfdt.h>
 
+/**
+ * Maximum entries in a supported memory table. Up this if we need to work
+ * with particularly complex memory tables.
+ */
+#define MAX_MEM_TABLE_ENTRIES (8)
+
 const void * find_fit_subimage(void *fdt);
 
 /**
@@ -58,5 +64,19 @@ int find_node(const void * image, const char * path);
  */
 int get_image_extents(const void *fdt, int image_node,
     const char *description, void **out_location, size_t *out_size);
+
+
+/**
+ * Adjust the target FDT's memory to exclude the provided region. This allows
+ * the stub to carve out memory for itself that e.g. Linux knows not to touch.
+ *
+ * @param fdt The FDT to be updated.
+ * @param start_addr The start of the memory region to be excluded.
+ * @param end_addr The end of the memory region to be excluded.
+ *
+ * @return SUCCESS, or an error code on failure
+ */
+int update_fdt_to_exclude_memory(void *fdt, uintptr_t start_addr, 
+    uintptr_t end_addr);
 
 #endif
