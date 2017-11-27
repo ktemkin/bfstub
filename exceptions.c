@@ -10,6 +10,7 @@
 
 #include <stdint.h>
 #include <microlib.h>
+#include <cache.h>
 
 #include "image.h"
 #include "exceptions.h"
@@ -48,6 +49,47 @@ void unhandled_vector(struct guest_state *regs)
     printf("\n\n");
 }
 
+
+/**
+ * Handles an HVC call.
+ */
+static void handle_hvc(struct guest_state *regs, int call_number)
+{
+
+    switch(call_number) {
+
+    // Example hypercall: print things!
+    //  x0: Length of the string to print.
+    //  x1: Physical address of the relevant string.
+    case 0x1234:
+      {
+
+        // Convert the arguments into well-typed entities.
+        unsigned int chars_total = regs->x[0];
+        char *string = (char *)regs->x[1];
+
+        // Print the string. Note this is horribly insecure, as
+        // we effecitvely give the guest the ability to print any
+        // physical address. But it'll do for an example. ^-^
+        for(int i = 0; i < chars_total; ++i) {
+            putc(string[i], NULL);
+        }
+
+        break;
+      }
+
+
+    default:
+        printf("Got a HVC call from 64-bit code.\n");
+        printf("Calling instruction was: hvc %d\n\n", call_number);
+        printf("Calling context (you can use these regs as hypercall args!):\n");
+        print_registers(regs);
+        printf("\n\n");
+        break;
+    }
+}
+
+
 /**
  * Placeholder function that triggers whenever a user event triggers a
  * synchronous interrupt. Currently, we really only care about 'hvc',
@@ -58,7 +100,7 @@ void handle_hypercall(struct guest_state *regs)
 {
     // This is demonstration code.
     // In the future, you'd stick your hypercall table here for the minimial
-    // amount of hypercalls you'd use to 
+    // amount of hypercalls you'd use to start Bareflank.
 
     switch (regs->esr_el2.ec) {
 
@@ -66,11 +108,8 @@ void handle_hypercall(struct guest_state *regs)
         // Read the hypercall number.
         int hvc_nr = regs->esr_el2.iss & 0xFFFF;
 
-        printf("Got a HVC call from 64-bit code.\n");
-        printf("Calling instruction was: hvc %d\n\n", hvc_nr);
-        printf("Calling context (you can use these regs as hypercall args!):\n");
-        print_registers(regs);
-        printf("\n\n");
+        // ... and handle the hypercall.
+        handle_hvc(regs, hvc_nr);
         break;
     }
     default:
