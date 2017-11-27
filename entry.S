@@ -180,7 +180,7 @@ _post_el1_switch:
         push    x9,  x10
         push    x7,  x8
         push    x5,  x6
-        push    x4,  x4
+        push    x3,  x4
         push    x1,  x2
 
         // x0 and the el2_esr
@@ -230,21 +230,21 @@ _post_el1_switch:
         pop    x20, x0
 
         // General purpose registers x1 - x30
-        push    x1,  x2
-        push    x4,  x4
-        push    x5,  x6
-        push    x7,  x8
-        push    x9,  x10
-        push    x11, x12
-        push    x13, x14
-        push    x15, x16
-        push    x17, x18
-        push    x19, x20
-        push    x21, x22
-        push    x23, x24
-        push    x25, x26
-        push    x27, x28
-        push    x29, x30
+        pop    x1,  x2
+        pop    x3,  x4
+        pop    x5,  x6
+        pop    x7,  x8
+        pop    x9,  x10
+        pop    x11, x12
+        pop    x13, x14
+        pop    x15, x16
+        pop    x17, x18
+        pop    x19, x20
+        pop    x21, x22
+        pop    x23, x24
+        pop    x25, x26
+        pop    x27, x28
+        pop    x29, x30
 .endm
 
 /*
