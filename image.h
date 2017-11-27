@@ -73,10 +73,11 @@ int get_image_extents(const void *fdt, int image_node,
  * @param fdt The FDT to be updated.
  * @param start_addr The start of the memory region to be excluded.
  * @param end_addr The end of the memory region to be excluded.
+ * @param out_start_of_ram Out arugument. Will be popualted with the address of the first available RAM.
  *
  * @return SUCCESS, or an error code on failure
  */
-int update_fdt_to_exclude_memory(void *fdt, uintptr_t start_addr, 
-    uintptr_t end_addr);
+int update_fdt_to_exclude_memory(void *fdt, uintptr_t start_addr,
+    uintptr_t end_addr, void **out_start_of_ram);
 
 #endif

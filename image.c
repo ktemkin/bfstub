@@ -200,8 +200,11 @@ static size_t copy_or_split_memory_table_entries(const uint32_t *source_entry, u
 
 /**
  * Helper function that prints out a memory table entry.
+ *
+ * @param memory_table A memory table, as extracted from an FDT.
+ * @param entries The number of entries in the memory table.
  */
-void print_memory_table(uint32_t *memory_table, size_t entries)
+static void print_memory_table(uint32_t *memory_table, size_t entries)
 {
     uint32_t *current_entry = memory_table;
 
@@ -225,21 +228,56 @@ void print_memory_table(uint32_t *memory_table, size_t entries)
 
 
 /**
+ * Helper function that finds the start of RAM.
+ *
+ * @param memory_table A memory table, as extracted from an FDT.
+ * @param entries The number of entries in the memory table.
+ */
+static void *find_start_of_ram(uint32_t *memory_table, size_t entries)
+{
+    uint32_t *current_entry = memory_table;
+    uint64_t start_of_ram = -1ULL;
+
+    // Iterate over each entry in the table.
+    while(entries--) {
+        uint64_t addr, size;
+
+        // Parse the memory table entry...
+        _from_mem_table_entry(current_entry, &addr, &size);
+
+        // If we've hit our senitnel, abort.
+        if(!addr)
+            break;
+
+        // Otherwise, update the lowest seen RAM address.
+        start_of_ram = min(addr, start_of_ram);
+
+        // Move to the next memory table entry.
+        current_entry += 4;
+    }
+
+    return (void *)start_of_ram;
+}
+
+
+/**
  * Adjust the target FDT's memory to exclude the provided region. This allows
  * the stub to carve out memory for itself that e.g. Linux knows not to touch.
  *
  * @param fdt The FDT to be updated.
  * @param start_addr The start of the memory region to be excluded.
  * @param end_addr The end of the memory region to be excluded.
+ * @param out_start_of_ram Out arugument. Will be popualted with the address of the first available RAM.
  *
  * @return SUCCESS, or an error code on failure
  */
-int update_fdt_to_exclude_memory(void *fdt, uintptr_t start_addr, uintptr_t end_addr)
+int update_fdt_to_exclude_memory(void *fdt, uintptr_t start_addr,
+    uintptr_t end_addr, void **out_start_of_ram)
 {
     const struct fdt_property *source_reg;
 
     int memory_node, rc;
-    size_t source_memory_table_entries, current_entry = 0;
+    size_t source_memory_table_entries, target_memory_table_entries = 0;
 
     uint32_t *source_memory_table;
     uint32_t target_memory_table[MAX_MEM_TABLE_ENTRIES * sizeof(uint32_t) *  4];
@@ -250,7 +288,7 @@ int update_fdt_to_exclude_memory(void *fdt, uintptr_t start_addr, uintptr_t end_
     // If we weren't able to resolve the memory node, fail out.
     if(memory_node < 0) {
         printf("ERROR: Could not find a description of the system's memory (%s)!\n", fdt_strerror(memory_node));
-        return -memory_node;
+        return memory_node;
     }
 
     // Retreive the property that contains the bootloader-provided memory topology.
@@ -274,28 +312,33 @@ int update_fdt_to_exclude_memory(void *fdt, uintptr_t start_addr, uintptr_t end_
         // If we don't have space to potentially generate two entries, fail out.
         // (Theoretically we could continue if we knew this was only going to generate one entry
         //  and we knew we had one entry left, but this implementation favors simplicity.)
-        if(current_entry + 2 > MAX_MEM_TABLE_ENTRIES) {
-            printf("ERROR: Not enough space to populate the FDT with an updated memory map (need >%d entires)!\n", current_entry + 2);
+        if(target_memory_table_entries + 2 > MAX_MEM_TABLE_ENTRIES) {
+            printf("ERROR: Not enough space to populate the FDT with an updated memory map (need >%d entires)!\n", target_memory_table_entries + 2);
             return -FDT_ERR_NOSPACE;
         }
 
         // Generate the new memory table entries...
-        current_entry += copy_or_split_memory_table_entries(&source_memory_table[i * 4],
-            &target_memory_table[current_entry * 4], start_addr, end_addr);
+        target_memory_table_entries += copy_or_split_memory_table_entries(&source_memory_table[i * 4],
+            &target_memory_table[target_memory_table_entries * 4], start_addr, end_addr);
     }
 
     // Print the source and destination tables.
     printf("\nOriginal memory table:\n");
     print_memory_table(source_memory_table, source_memory_table_entries);
     printf("\nUpdated memory table:\n");
-    print_memory_table(target_memory_table, current_entry);
+    print_memory_table(target_memory_table, target_memory_table_entries);
+
+    // Find the start of RAM.
+    if(out_start_of_ram) {
+        *out_start_of_ram = find_start_of_ram(target_memory_table, target_memory_table_entries);
+    }
 
     // Copy the memory topology over to the target FDT. For now, we assume the cell sizes
     // (address and size) match the target, as discharge does.
-    rc = fdt_setprop(fdt, memory_node, "reg", target_memory_table, current_entry * sizeof(*target_memory_table));
+    rc = fdt_setprop(fdt, memory_node, "reg", target_memory_table, target_memory_table_entries * sizeof(*target_memory_table));
     if (rc) {
         printf("ERROR: Could not update the FDT memory table! (%d)\n", rc);
-        return rc;
+        return -rc;
     }
 
     return SUCCESS;

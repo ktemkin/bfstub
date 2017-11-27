@@ -91,6 +91,33 @@ void load_device_tree(void *fdt)
 }
 
 /**
+ * Relocate the Linux kernel to the start of RAM. This is necessary for the
+ * Linux start-of-day code to work properly if we don't modify TEXT_OFFSET
+ * during its build process.
+ *
+ * @param kernel The kernel to be relocated.
+ * @param size_t The size of the kernel.
+ */
+void * relocate_kernel(const void *kernel, size_t size, void *start_of_ram)
+{
+    const uint64_t *kernel_raw = kernel;
+
+    // Read the requested TEXT_OFFSET from the kernel image header. This is how
+    // many bytes after the START_OF_RAM Linux expects us to load it.
+    uintptr_t text_offset = (uintptr_t)kernel_raw[1];
+
+    // Determine the load address for the Linux kernel.
+    uintptr_t load_addr = (uintptr_t)start_of_ram + text_offset;
+
+    printf("\n\nRelocating hardware domain kernel to %p...\n", load_addr);
+
+    // Trivial relocation, as the kernel handles its internal relocations:
+    // move it to the relevant memory address.
+    return memmove((void *)load_addr, kernel, size);
+}
+
+
+/**
  * Launch an executable kernel image. Should be the last thing called by
  * Discharge, as it does not return.
  *
@@ -114,7 +141,7 @@ void launch_kernel(const void *kernel, const void *fdt)
         printf("!          Attempting to boot anyways.\n");
     }
 
-    printf("\n\nLaunching hardware domain kernel...\n");
+    printf("Launching hardware domain kernel...\n");
     target_kernel(fdt);
 }
 
@@ -217,8 +244,9 @@ void main(void *fdt)
  * to the EL1 kernel. This asks it nicely not to trounce our physical memory. :)
  *
  * @param fdt The FDT to be patched.
+ * @param out_start_of_ram Out argument. Retrieves the start of RAM.
  */
-int exclude_el2_memory_from_fdt(void *fdt)
+int exclude_el2_memory_from_fdt(void *fdt, void **out_start_of_ram)
 {
     // These symbols don't actually have a meaningful type-- instead,
     // we care about the locations at which the linker /placed/ these
@@ -231,7 +259,7 @@ int exclude_el2_memory_from_fdt(void *fdt)
     uintptr_t end_addr = (uintptr_t)&lds_el2_bfstub_end;
 
     // Patch our FDT to exclude the relevant memory address.
-    return update_fdt_to_exclude_memory(fdt, start_addr, end_addr);
+    return update_fdt_to_exclude_memory(fdt, start_addr, end_addr, out_start_of_ram);
 }
 
 
@@ -243,7 +271,7 @@ void main_el1(void * fdt)
 {
     int rc;
     size_t kernel_size;
-    void * kernel_location;
+    void *kernel_location, *start_of_ram;
 
     // Read the currrent execution level...
     uint32_t el = get_current_el();
@@ -268,7 +296,7 @@ void main_el1(void * fdt)
     //   necessary if we set up second-level page translation. If we set up
     //   second-level page translation, we'd need to synthesize a new FDT
     //   memory descripton that matches the guest-physical address space.)
-    rc = exclude_el2_memory_from_fdt(fdt);
+    rc = exclude_el2_memory_from_fdt(fdt, &start_of_ram);
     if (rc) {
         panic("Could not exclude our stub's memory from the FDT!");
     }
@@ -279,6 +307,8 @@ void main_el1(void * fdt)
 
     // Launch our next-stage (e.g. Linux) kernel.
     __invalidate_cache_region(kernel_location, kernel_size);
+    kernel_location = relocate_kernel(kernel_location, kernel_size, start_of_ram);
+
     launch_kernel(kernel_location, fdt);
 
     // If we've made it here, we failed to boot, and we can't recover.
