@@ -4,7 +4,7 @@ ENTRY(_header)
 SECTIONS
 {
   /* start the the beginning our relocated block, where Discharge will place us */
-  . = 0x80100000;
+  . = 0xf0000000;
 
 	. = ALIGN(4);
 	.text : {
